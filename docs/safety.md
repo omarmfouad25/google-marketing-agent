@@ -1,0 +1,82 @@
+# Safety model
+
+An AI agent with write access to an ad account can spend real money. This package is built so that it can only
+change what you approve, and so that anything it changed can be undone.
+
+## The four layers
+
+### 1. Writes are off per account
+
+Every profile starts with `"writes": false`. Write tools load only when at least one profile has `"writes": true`.
+A write against a read-only profile is refused before anything reaches Google:
+
+```
+REFUSED: profile "globex" is read-only. Set "writes": true for it in accounts.json to allow changes.
+```
+
+Agencies can enable writes for the clients they manage day to day and keep the rest read-only.
+
+### 2. Preview first, apply on confirm
+
+Every write tool runs twice:
+
+1. **Without `confirm`:** the change is sent to Google with `validate_only`. Google checks it in full (permissions,
+   policy, field rules), and nothing changes. You get a preview:
+
+   ```
+   DRY RUN OK (nothing changed)
+   Set 1 campaign(s) → ENABLED: 12345678901
+   Google validated 1 operation(s). Call again with confirm: true to apply.
+   ```
+
+2. **With `confirm: true`:** the same change is applied.
+
+The skills always show you the preview and wait for your yes before calling with `confirm: true`. If you use the
+tools directly from another agent, keep the same habit.
+
+### 3. Guardrails
+
+| Guardrail | Behaviour |
+|---|---|
+| New campaigns and ads | Always created **PAUSED**. Going live is a separate, explicit `ads_set_status` |
+| Budget changes | Refused above `guardrails.maxBudgetChangePct` (default 50%) unless `allowLargeChange: true` |
+| Location targeting | Always **presence**: people in or regularly in the location. Google's API default also targets people merely *interested in* it, which in practice can send a large share of spend to other countries |
+| Money | Entered and shown in the account currency; micros conversion happens inside the tool |
+
+### 4. Change log and rollback
+
+Every applied write is appended to:
+
+```
+~/.config/google-marketing-agent/changes/<account>.jsonl
+```
+
+Each entry records the time, tool, summary, the operations sent, the resources created or changed, and **the prior
+state** of what was changed.
+
+- `changes_list` shows recent entries for an account.
+- `ads_rollback` reverts one entry by restoring its prior state (status, budget, bid, network settings). It uses the
+  same preview → confirm flow.
+- Things that were **created** are removed (Google keeps their history). Image assets and Demand Gen custom segments are listed as not reverted: assets are unused once their ad is removed, and segments can be removed in the UI or reused.
+- Rollback restores the logged values, so it overwrites any edits made after that change. It refuses Tag Manager and GA4 entries, entries whose prior-state snapshot failed, entries already rolled back, and rollbacks of a rollback.
+- Writes fail closed: if the prior-state snapshot can't be taken, or the current budget is unknown for the budget guardrail, the change is refused rather than applied unlogged.
+- The `container` parameter of `gtm_upsert` and `gtm_publish` can target any Tag Manager container the login can see, not only the one in the profile.
+
+## What the agent can never do
+
+- Change anything on a read-only profile.
+- Apply a change without `confirm: true`.
+- Create a campaign or ad that serves immediately.
+- Read or print your OAuth credentials. They live in `credentials.json` (mode `0600`) and never pass through tool
+  output.
+
+## Your responsibilities
+
+- Review previews before confirming. The preview shows what will change; it can't judge whether the change is a good
+  idea.
+- Keep `credentials.json` private. Anyone with it can act as you on every account you can reach.
+- Google's own rules still apply: ad policy, budgets, billing. A change Google accepts can still cost money.
+
+## Reporting a security issue
+
+See [SECURITY.md](../SECURITY.md). Don't open a public issue for vulnerabilities.

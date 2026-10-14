@@ -1,0 +1,7 @@
+{
+  "name": "Example Demand Gen - Spring",
+  "dailyBudget": 25,
+  "bidding": "MAXIMIZE_CONVERSIONS",
+  "targetCpa": 12,
+  "confirm": false
+}

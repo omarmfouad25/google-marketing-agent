@@ -1,0 +1,16 @@
+import { z } from "zod";
+import { Tool, text } from "../core/tool.js";
+import { listChanges } from "../core/changelog.js";
+
+export function registerChangesList(tool: Tool) {
+  tool(
+    "changes_list",
+    "Recent applied changes for an account (newest first), with the IDs ads_rollback takes",
+    { limit: z.number().int().positive().max(200).optional().describe("Defaults to 20") },
+    async ({ limit }, ctx) => {
+      const rows = listChanges(ctx.alias, limit ?? 20);
+      if (!rows.length) return text(`No changes logged for ${ctx.alias}.`);
+      return text(rows.map((e) => `- ${e.id} · ${e.at} · ${e.product} · ${e.tool} · ${e.summary.replace(/\s*\n+\s*/g, " · ")}`).join("\n"));
+    }
+  );
+}

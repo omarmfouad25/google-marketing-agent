@@ -1,0 +1,9 @@
+{
+  "name": "google-marketing-agent-repo",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "npm run build -w google-marketing-agent",
+    "test": "npm test -w google-marketing-agent"
+  }
+}

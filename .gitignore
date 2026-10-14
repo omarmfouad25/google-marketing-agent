@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.env*
+!.env.example
+*.key.json
+credentials.json
+accounts.json
+changes/
+.DS_Store
+packages/mcp/README.md
+packages/mcp/LICENSE
+
+# Internal working files (kept local, not published)
+CLAUDE.md
+docs/specs/
+docs/superpowers/
+.superpowers/
+.git-private/

@@ -1,0 +1,26 @@
+{
+  "default": "acme",
+  "accounts": {
+    "acme": {
+      "customerId": "1234567890",
+      "currency": "USD",
+      "timezone": "America/New_York",
+      "geos": ["2840"],
+      "languages": ["en"],
+      "ga4PropertyId": "123456789",
+      "gscSiteUrl": "sc-domain:acme.example",
+      "gtmContainerId": "GTM-XXXXXXX",
+      "writes": false,
+      "guardrails": { "maxBudgetChangePct": 50 },
+      "brand": { "name": "Acme", "colors": ["#0B1F3A", "#F2A900"] }
+    },
+    "globex": {
+      "customerId": "2345678901",
+      "loginCustomerId": "9876543210",
+      "currency": "EUR",
+      "timezone": "Europe/Berlin",
+      "geos": ["2276"],
+      "languages": ["de", "en"]
+    }
+  }
+}

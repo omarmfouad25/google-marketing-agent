@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "google-marketing": { "command": "npx", "args": ["-y", "google-marketing-agent"] }
+  }
+}

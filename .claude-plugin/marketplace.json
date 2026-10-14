@@ -1,0 +1,14 @@
+{
+  "name": "google-marketing-agent",
+  "description": "Google Ads, GA4, Search Console and Tag Manager for Claude Code: safe, preview-first campaign management with change log and rollback.",
+  "owner": {
+    "name": "Omar Fouad"
+  },
+  "plugins": [
+    {
+      "name": "google-marketing-agent",
+      "source": "./",
+      "description": "MCP server + skills for Google Ads, GA4, Search Console and Tag Manager."
+    }
+  ]
+}

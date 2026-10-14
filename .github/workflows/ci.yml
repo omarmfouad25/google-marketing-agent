@@ -1,0 +1,40 @@
+name: ci
+on:
+  push: { branches: [main], tags: ["v*"] }
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, registry-url: "https://registry.npmjs.org" }
+      # npm trusted publishing (OIDC): no token secret; provenance is attached automatically. Needs npm >= 11.5.1.
+      - run: npm install -g npm@11
+      - run: npm ci
+      # tag must match the package version; an already-published version is skipped, not failed
+      - name: Publish
+        run: |
+          v=$(node -p "require('./packages/mcp/package.json').version")
+          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "Tag ${GITHUB_REF_NAME} != package version $v"; exit 1; }
+          if npm view "google-marketing-agent@$v" version >/dev/null 2>&1; then echo "$v already on npm, skipping"; exit 0; fi
+          # prereleases go to "next" once a stable version exists; until then they are "latest" so npx gets the newest
+          tag=latest
+          if [[ "$v" == *-* ]] && npm view google-marketing-agent versions --json | node -e 'process.exit(JSON.parse(require("fs").readFileSync(0)).some(x=>!x.includes("-"))?0:1)'; then tag=next; fi
+          npm publish -w google-marketing-agent --access public --tag "$tag"

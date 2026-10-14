@@ -1,0 +1,61 @@
+{
+  "name": "google-marketing-agent",
+  "version": "0.1.0",
+  "description": "MCP server + CLI for Google Ads, GA4, Search Console and Tag Manager: audits, insights, reports and safe campaign management (preview-first, change log, rollback).",
+  "license": "MIT",
+  "author": "Omar Fouad",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/omarmfouad25/google-marketing-agent.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/omarmfouad25/google-marketing-agent#readme",
+  "bugs": {
+    "url": "https://github.com/omarmfouad25/google-marketing-agent/issues"
+  },
+  "type": "module",
+  "bin": {
+    "google-marketing-agent": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "knowledge",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "google-ads",
+    "mcp",
+    "mcp-server",
+    "claude-code",
+    "ga4",
+    "search-console",
+    "google-tag-manager",
+    "ppc",
+    "ai-agent"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepack": "rm -rf dist && cp ../../README.md ../../LICENSE . && npm run build",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:live": "tsx test/live.ts"
+  },
+  "dependencies": {
+    "@google-analytics/data": "^5.2.1",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "google-ads-api": "^23.0.0",
+    "googleapis": "^144.0.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
+  }
+}

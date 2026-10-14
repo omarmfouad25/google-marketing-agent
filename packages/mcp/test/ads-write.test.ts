@@ -1,0 +1,185 @@
+import { describe, it, expect, beforeEach } from "vitest";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { AccountStore } from "../src/core/context.js";
+import { defineTool } from "../src/core/tool.js";
+import { registerAdsWriteTools } from "../src/ads/write/index.js";
+import { listChanges } from "../src/core/changelog.js";
+import { snapshotQueries } from "../src/core/snapshot.js";
+import { fakeCustomer, fakeServer } from "./fakes.js";
+
+const credentials = { clientId: "id", clientSecret: "s", refreshToken: "r" };
+let customer: ReturnType<typeof fakeCustomer>;
+let server: ReturnType<typeof fakeServer>;
+
+function setup(profile: Record<string, unknown> = {}) {
+  process.env.GOOGLE_MARKETING_AGENT_CONFIG = join(mkdtempSync(join(tmpdir(), "gma-")), "accounts.json");
+  customer = fakeCustomer({
+    language_constant: [
+      { language_constant: { id: 1000, code: "en" } },
+      { language_constant: { id: 1001, code: "de" } },
+    ],
+    campaign: [{ campaign: { name: "Brand" }, campaign_budget: { resource_name: "customers/1/campaignBudgets/9", amount_micros: 100_000_000, explicitly_shared: false } }],
+  });
+  const store = new AccountStore({
+    config: { accounts: { acme: { customerId: "1", currency: "EUR", timezone: "UTC", writes: true, ...profile } } },
+    credentials,
+    makeCustomer: () => customer,
+  });
+  server = fakeServer();
+  registerAdsWriteTools(defineTool(server as any, store));
+}
+
+describe("ads write tools", () => {
+  beforeEach(() => setup({ geos: ["2276"], languages: ["de", "en"] }));
+
+  it("registers every 005 write tool name", () => {
+    expect(Object.keys(server.tools).sort()).toEqual([
+      "ads_add_extensions", "ads_add_keywords", "ads_add_negative_keywords", "ads_assign_custom_goal",
+      "ads_create_ad_group", "ads_create_custom_goal", "ads_create_demand_gen_ad", "ads_create_demand_gen_campaign",
+      "ads_create_rsa", "ads_create_search_campaign", "ads_demand_gen_audience", "ads_negative_list",
+      "ads_rollback", "ads_set_campaign_goals", "ads_set_conversion_primary", "ads_set_status", "ads_update_budget",
+      "ads_update_conversion_action", "ads_update_cpc_bid", "ads_update_networks",
+    ]);
+  });
+
+  it("creates search campaigns PAUSED, presence-only, with profile geos and resolved languages", async () => {
+    await server.tools.ads_create_search_campaign.handler({ name: "Test", dailyBudget: 50, bidding: "MAXIMIZE_CONVERSIONS" });
+    const ops = customer.calls[0].ops as any[];
+    const campaign = ops.find((o) => o.entity === "campaign").resource;
+    expect(campaign.status).toBe(3); // PAUSED
+    expect(campaign.geo_target_type_setting.positive_geo_target_type).toBe(7); // PRESENCE
+    const criteria = ops.filter((o) => o.entity === "campaign_criterion").map((o) => o.resource);
+    expect(criteria.map((c) => c.location?.geo_target_constant).filter(Boolean)).toEqual(["geoTargetConstants/2276"]);
+    expect(criteria.map((c) => c.language?.language_constant).filter(Boolean)).toEqual(["languageConstants/1001", "languageConstants/1000"]);
+    expect(customer.calls[0].options).toEqual({ validate_only: true });
+  });
+
+  it("asks for geos when the profile has none", async () => {
+    setup();
+    const r = await server.tools.ads_create_search_campaign.handler({ name: "T", dailyBudget: 50, bidding: "MAXIMIZE_CLICKS", languages: ["en"] });
+    expect(r.content[0].text).toMatch(/geoTargetIds.*"geos" in the profile/);
+    expect(customer.calls).toHaveLength(0);
+  });
+
+  it("uses the profile budget guardrail and currency", async () => {
+    setup({ guardrails: { maxBudgetChangePct: 20 } });
+    const r = await server.tools.ads_update_budget.handler({ campaignId: "5", dailyBudget: 130 });
+    expect(r.content[0].text).toMatch(/BLOCKED: 100 → 130 EUR is a \+30% change \(limit ±20%\)/);
+  });
+
+  it("rounds the guardrail percentage", async () => {
+    setup({ guardrails: { maxBudgetChangePct: 7 } });
+    const r = await server.tools.ads_update_budget.handler({ campaignId: "5", dailyBudget: 130 });
+    expect(r.content[0].text).toMatch(/limit ±7%\)/);
+  });
+
+  it("requires countryCodes for a lookalike", async () => {
+    const r = await server.tools.ads_demand_gen_audience.handler({ name: "A", adGroupIds: ["1"], lookalikeSeedId: "9" });
+    expect(r.content[0].text).toMatch(/countryCodes is required/);
+    expect(customer.calls).toHaveLength(0);
+  });
+
+  it("refuses the custom segment call on a read-only profile", async () => {
+    setup({ writes: false });
+    const r = await server.tools.ads_demand_gen_audience.handler({
+      name: "A", adGroupIds: ["1"], customSegment: { keywords: ["x"] }, confirm: true,
+    });
+    expect(r.content[0].text).toMatch(/^REFUSED/);
+    expect(customer.calls).toHaveLength(0);
+  });
+
+  const budgetRow = (amount?: number) => ({
+    campaign: { name: "Brand" },
+    campaign_budget: { resource_name: "customers/1/campaignBudgets/9", ...(amount === undefined ? {} : { amount_micros: amount }), explicitly_shared: false },
+  });
+  const budget = (p: Record<string, unknown>) => server.tools.ads_update_budget.handler({ campaignId: "5", ...p });
+
+  it("fails closed when the current budget is unknown", async () => {
+    customer = fakeCustomer({ campaign: [budgetRow()] });
+    const r = await budget({ dailyBudget: 130, confirm: true });
+    expect(r.content[0].text).toMatch(/current daily budget unknown; can't apply the ±50% guardrail/);
+    expect(customer.calls).toHaveLength(0);
+  });
+
+  it("passes exactly at the limit, blocks just over, allowLargeChange bypasses", async () => {
+    setup({ guardrails: { maxBudgetChangePct: 7 } });
+    expect((await budget({ dailyBudget: 107 })).content[0].text).toMatch(/^DRY RUN OK/);
+    expect((await budget({ dailyBudget: 107.01 })).content[0].text).toMatch(/^BLOCKED/);
+    expect((await budget({ dailyBudget: 300, allowLargeChange: true })).content[0].text).toMatch(/^DRY RUN OK/);
+  });
+
+  it("creates Demand Gen campaigns, RSAs and Demand Gen ads PAUSED", async () => {
+    await server.tools.ads_create_demand_gen_campaign.handler({ name: "DG", dailyBudget: 10, bidding: "MAXIMIZE_CLICKS" });
+    const dg = (customer.calls[0].ops as any[]).find((o) => o.entity === "campaign").resource;
+    expect(dg.status).toBe(3);
+    expect(dg.geo_target_type_setting.positive_geo_target_type).toBe(7);
+
+    await server.tools.ads_create_rsa.handler({
+      adGroupId: "1", headlines: ["a", "b", "c"], descriptions: ["d", "e"], finalUrl: "https://example.com",
+    });
+    expect((customer.calls[1].ops as any[])[0].resource.status).toBe(3);
+
+    const img = join(mkdtempSync(join(tmpdir(), "gma-img-")), "a.png");
+    writeFileSync(img, "x");
+    await server.tools.ads_create_demand_gen_ad.handler({
+      campaignId: "1", adGroupId: "2", landscapeImages: [img], squareImages: [img], logoImage: img,
+      headlines: ["h"], descriptions: ["d"], businessName: "B", finalUrl: "https://example.com",
+    });
+    const ad = (customer.calls[2].ops as any[]).find((o) => o.entity === "ad_group_ad").resource;
+    expect(ad.status).toBe(3);
+  });
+
+  it("validates a custom segment on dry run and logs it on confirm", async () => {
+    const dry = await server.tools.ads_demand_gen_audience.handler({ name: "A", adGroupIds: ["1"], customSegment: { keywords: ["x"] } });
+    expect(customer.calls[0].options).toEqual({ validate_only: true });
+    expect(dry.content[0].text).toMatch(/^DRY RUN OK/);
+    expect(dry.content[0].text).toMatch(/validated/);
+    expect(customer.calls).toHaveLength(1);
+
+    await server.tools.ads_demand_gen_audience.handler({ name: "A", adGroupIds: ["1"], customSegment: { keywords: ["x"] }, confirm: true });
+    expect(customer.calls[1].options).toEqual({ validate_only: false });
+    const entry = listChanges("acme").find((e) => e.tool === "ads_demand_gen_audience" && e.summary.startsWith("Create custom segment"));
+    expect(entry?.created).toEqual([{ entity: "custom_audience", resource_name: "customers/1/customAudiences/77" }]);
+  });
+
+  it("refuses a read-only profile before any Google call while another profile is writable", async () => {
+    process.env.GOOGLE_MARKETING_AGENT_CONFIG = join(mkdtempSync(join(tmpdir(), "gma-")), "accounts.json");
+    customer = fakeCustomer({ campaign: [budgetRow(100_000_000)] });
+    const base = { customerId: "1", currency: "EUR", timezone: "UTC" };
+    const store = new AccountStore({
+      config: { accounts: { ro: { ...base, writes: false }, rw: { ...base, writes: true } } },
+      credentials,
+      makeCustomer: () => customer,
+    });
+    server = fakeServer();
+    registerAdsWriteTools(defineTool(server as any, store));
+    const r = await budget({ dailyBudget: 110, confirm: true, account: "ro" });
+    expect(r.content[0].text).toMatch(/^REFUSED/);
+    expect(customer.calls).toHaveLength(0);
+    expect(customer.queries).toHaveLength(0);
+  });
+
+  it("snapshots composite-id names but refuses names with quotes", () => {
+    const op = (resource_name: string) => [{ entity: "campaign_conversion_goal", operation: "update" as const, resource: { resource_name, biddable: true } }];
+    expect(snapshotQueries(op("customers/1/x/5~DEFAULT~WEBSITE"))).toHaveLength(1);
+    expect(() => snapshotQueries(op("customers/1/x/5' OR '1"))).toThrow(/Refusing to snapshot/);
+  });
+
+  it("rejects malformed language codes", () => {
+    const schema = (server.tools.ads_create_search_campaign.shape as any).languages;
+    expect(schema.safeParse(["en", "zh-CN"]).success).toBe(true);
+    expect(schema.safeParse(["en'; DROP"]).success).toBe(false);
+  });
+
+  it("refuses campaign and Demand Gen ad creation on a read-only profile before any lookup", async () => {
+    setup({ writes: false, geos: undefined });
+    const a = await server.tools.ads_create_search_campaign.handler({ name: "n", dailyBudget: 5, bidding: "MAXIMIZE_CLICKS", confirm: true });
+    const b = await server.tools.ads_create_demand_gen_ad.handler({ campaignId: "1", adGroupName: "g", landscapeImages: ["x"], squareImages: ["x"], logoImage: "x", headlines: ["h"], descriptions: ["d"], businessName: "b", finalUrl: "https://example.com", confirm: true });
+    expect(a.content[0].text).toMatch(/^REFUSED/);
+    expect(b.content[0].text).toMatch(/^REFUSED/);
+    expect(customer.queries).toEqual([]);
+    expect(customer.calls).toEqual([]);
+  });
+});

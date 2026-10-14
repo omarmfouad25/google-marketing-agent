@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{BRAND_NAME}} · Marketing report · {{MONTH_LABEL}}</title>
+<style>
+  /* Neutral theme; the monthly-report skill replaces --brand-1 / --brand-2 with the profile colours */
+  :root {
+    --brand-1: #1f2937;
+    --brand-2: #2563eb;
+    --ink: #111827;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --bg: #ffffff;
+    --soft: #f9fafb;
+    --good: #047857;
+    --bad: #b91c1c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .page { max-width: 960px; margin: 0 auto; padding: 48px 40px; }
+  header.cover { border-bottom: 4px solid var(--brand-1); padding-bottom: 24px; margin-bottom: 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+  header.cover img { max-height: 56px; max-width: 200px; }
+  h1 { font-size: 28px; margin: 0; color: var(--brand-1); letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin-top: 4px; }
+  h2 { font-size: 18px; margin: 40px 0 12px; color: var(--brand-1); border-left: 4px solid var(--brand-2); padding-left: 10px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .kpi { background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .kpi .value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+  .kpi .delta { font-size: 12px; margin-top: 2px; }
+  .good { color: var(--good); } .bad { color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .summary { background: var(--soft); border-radius: 10px; padding: 16px 18px; }
+  .notes { color: var(--muted); font-size: 12px; }
+  footer { margin-top: 48px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--line); padding-top: 12px; }
+  @page { size: A4; margin: 14mm; }
+  @media print {
+    .page { padding: 0; max-width: none; }
+    section.kpis-block, .kpi, tr { break-inside: avoid; }
+    thead { display: table-header-group; }
+    h2 { break-after: avoid; }
+    .kpi { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="cover">
+    <div>
+      <h1>{{BRAND_NAME}}</h1>
+      <div class="sub">Marketing report · {{MONTH_LABEL}} · {{ACCOUNT_LABEL}}</div>
+    </div>
+    <img src="{{LOGO_DATA_URI}}" alt="{{BRAND_NAME}} logo">
+  </header>
+
+  <section>
+    <h2>Summary</h2>
+    <div class="summary">{{SUMMARY}}</div>
+  </section>
+
+  <section>
+    <h2>Paid search and Demand Gen</h2>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Spend</div><div class="value">{{SPEND}}</div><div class="delta {{SPEND_DIR}}">{{SPEND_DELTA}}</div></div>
+      <div class="kpi"><div class="label">Clicks</div><div class="value">{{CLICKS}}</div><div class="delta {{CLICKS_DIR}}">{{CLICKS_DELTA}}</div></div>
+      <div class="kpi"><div class="label">Conversions</div><div class="value">{{CONVERSIONS}}</div><div class="delta {{CONV_DIR}}">{{CONV_DELTA}}</div></div>
+      <div class="kpi"><div class="label">Cost per conversion</div><div class="value">{{CPA}}</div><div class="delta {{CPA_DIR}}">{{CPA_DELTA}}</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Campaigns</h2>
+    <table>
+      <thead><tr><th>Campaign</th><th class="num">Spend</th><th class="num">Clicks</th><th class="num">CTR</th><th class="num">Conv.</th><th class="num">Cost / conv.</th></tr></thead>
+      <tbody>
+        {{CAMPAIGN_ROWS}}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Top search terms</h2>
+    <table>
+      <thead><tr><th>Search term</th><th class="num">Spend</th><th class="num">Clicks</th><th class="num">Conv.</th></tr></thead>
+      <tbody>
+        {{SEARCH_TERM_ROWS}}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Website</h2>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Sessions</div><div class="value">{{SESSIONS}}</div></div>
+      <div class="kpi"><div class="label">Users</div><div class="value">{{USERS}}</div></div>
+      <div class="kpi"><div class="label">Engagement rate</div><div class="value">{{ENGAGEMENT}}</div></div>
+      <div class="kpi"><div class="label">Key events</div><div class="value">{{KEY_EVENTS}}</div></div>
+    </div>
+    <table style="margin-top:16px">
+      <thead><tr><th>Source / medium</th><th class="num">Sessions</th><th class="num">Key events</th></tr></thead>
+      <tbody>
+        {{SOURCE_ROWS}}
+      </tbody>
+    </table>
+    <table style="margin-top:16px">
+      <thead><tr><th>Landing page</th><th class="num">Sessions</th><th class="num">Engagement</th></tr></thead>
+      <tbody>
+        {{LANDING_ROWS}}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Organic search</h2>
+    <table>
+      <thead><tr><th>Query</th><th class="num">Clicks</th><th class="num">Impressions</th><th class="num">CTR</th><th class="num">Position</th></tr></thead>
+      <tbody>
+        {{QUERY_ROWS}}
+      </tbody>
+    </table>
+    <table style="margin-top:16px">
+      <thead><tr><th>Page</th><th class="num">Clicks</th><th class="num">Impressions</th></tr></thead>
+      <tbody>
+        {{PAGE_ROWS}}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Next month</h2>
+    <div class="summary">{{NEXT_MONTH}}</div>
+  </section>
+
+  <section class="notes">
+    <h2>Notes</h2>
+    {{NOTES}}
+  </section>
+
+  <footer>Generated with google-marketing-agent · Data: Google Ads, Google Analytics 4, Google Search Console · {{GENERATED_AT}}</footer>
+</div>
+</body>
+</html>
