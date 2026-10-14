@@ -21,8 +21,9 @@ export const SCOPES = [
 const TIMEOUT_MS = 5 * 60_000;
 
 function openBrowser(url: string) {
-  const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
-  const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
+  // Windows: rundll32 passes the URL intact (cmd's "start" would cut it at the first "&")
+  const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "rundll32" : "xdg-open";
+  const args = process.platform === "win32" ? ["url.dll,FileProtocolHandler", url] : [url];
   execFile(cmd, args, () => {});
 }
 

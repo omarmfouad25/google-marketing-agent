@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+- Windows: `init` opens the full Google sign-in link (it was cut at the first `&`).
+
 ## 0.1.1
 
 - Documentation rewritten: a shorter README with a 4-step start, a guided setup with a check after each part, and new
