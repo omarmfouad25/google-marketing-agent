@@ -65,6 +65,8 @@ const ENUM_FIELDS: Record<string, keyof typeof enums> = {
   "shared_set.type": "SharedSetType",
   "shared_set.status": "SharedSetStatus",
   "geographic_view.location_type": "GeoTargetingType",
+  "user_list.type": "UserListType",
+  "conversion_action.counting_type": "ConversionActionCountingType",
 };
 
 function enumName(path: string, value: unknown): unknown {

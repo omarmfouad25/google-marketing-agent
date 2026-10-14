@@ -73,7 +73,7 @@ export function registerGoals(tool: Tool) {
 
   tool(
     "ads_create_custom_goal",
-    "Create a custom conversion goal from specific conversion actions (e.g. 'Patient Leads'). Dry run unless confirm=true",
+    "Create a custom conversion goal from specific conversion actions (e.g. 'B2B Leads'). Dry run unless confirm=true",
     { name: z.string().min(1), conversionActionIds: z.array(Id).min(1), confirm: Confirm },
     async ({ name, conversionActionIds, confirm }, ctx) =>
       runAdsWrite(ctx, {

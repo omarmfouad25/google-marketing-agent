@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+- Four new skills for planning and building, following a method proven on a live lead-gen account: `campaign-architect`
+  (structure, budget split, bidding stages, goals, negative lists), `search-launch`, `demand-gen-launch` and
+  `tracking-audit`.
+- README and docs organised by what you can do: plan and budget, build campaigns, analyse and optimise, report.
+- Ads rows show user list types and conversion counting types as names.
+
 ## 0.1.2
 
 - Windows: `init` opens the full Google sign-in link (it was cut at the first `&`).

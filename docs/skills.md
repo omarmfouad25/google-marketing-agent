@@ -9,7 +9,7 @@ other agents that support skills can load them too. They all need the MCP server
 
 You don't call skills by name. Ask in plain language and the matching skill loads.
 
-## v1 (included)
+## Analyse, report and set up
 
 ### `setup`
 
@@ -75,16 +75,71 @@ colours.
 
 **You get:** one self-contained HTML file. Print it to PDF from the browser.
 
-## v2 (planned)
+## Plan and build (0.2)
+
+### `campaign-architect`
+
+**Say:** "Plan our Q4 campaigns", "How should I split the budget?", "Restructure this account"
+
+Starts from the account's own last 30 and 90 days, not a blank sheet:
+- Diagnosis: network split, spend outside targets, what each campaign bids on, search demand, GA4 leads by page.
+- If measurement is broken, it sends you to `tracking-audit` first.
+- Then the plan: campaign type per objective; one campaign per budget, goal and audience; a naming convention.
+- Budget split by priority and expected lead value, with a check that each daily budget covers at least one target
+  cost per lead.
+- A bidding stage per campaign (maximize clicks with a cap → maximize conversions → target CPA), plus goals,
+  shared negative lists by audience, standard settings and a transition plan.
+
+**You get:** a plan document. Creating the goals and negative lists is optional, each one previewed. Campaigns are
+built by the launch skills.
+
+### `search-launch`
+
+**Say:** "Build the Search campaign for <product>", "Write RSAs for <product>", "Create the campaigns from the plan"
+
+1. Keywords: themed ad groups, exact and phrase match, using search terms and Search Console as demand evidence.
+2. A copy document for your approval: 15 headlines and 4 descriptions per ad group with character counts, sitelinks
+   and callouts, policy-safe and natively written per language.
+3. The build, **paused**, previewed step by step: campaign, ad groups with keywords, ads, extensions, custom goal,
+   negatives.
+4. Resumable if a step fails. Then `pre-launch-check`, then launch.
+
+**You get:** the approved copy, a build log with IDs and change IDs, the pre-launch table.
+
+### `demand-gen-launch`
+
+**Say:** "Build Demand Gen for <product>", "Upload these images as a Demand Gen campaign", "Refresh the Demand Gen
+creative", "How is the new Demand Gen doing?"
+
+1. An image check per file: sizes and ratios, no painted buttons or fake UI, text in clean areas, real logos.
+2. Copy per language. The campaign on its own custom goal, and one ad group per language.
+3. An audience from your customer list, a lookalike, a custom segment of search terms and competitor sites, and
+   matching visitor lists. Everything **paused** until `pre-launch-check` passes.
+4. Later: a day 3 / week 1 read (channel split, engaged sessions, cost per lead) and creative refreshes.
+
+**You get:** the image check, a build log, the pre-launch table, and the first-week read on request.
+
+### `tracking-audit`
+
+**Say:** "Are my conversions right?", "Ads shows 0 conversions but we got leads", "Set up lead tracking"
+
+Checks Tag Manager tags and triggers, GA4 key events, Google Ads conversion actions and what each campaign bids on.
+Reconciles them with GA4 lead events and proposes a matrix where every lead is counted once, by audience. Then it
+fixes in a safe order, each step previewed:
+1. data layer events on the site;
+2. Tag Manager, published only after you see the changes;
+3. GA4 key events;
+4. Ads actions;
+5. one custom goal per audience.
+
+**You get:** the current-vs-target matrix, the applied changes and a verification checklist.
+
+## Planned
 
 | Skill | What it will do |
 |---|---|
-| `campaign-architect` | Account structure: naming convention, one goal per campaign, budget split, shared negative lists |
-| `search-launch` | RSA copy with length checks and policy-safe wording → build PAUSED → pre-launch check → launch |
-| `demand-gen-launch` | Asset specs, audience, goal, channels → build PAUSED → pre-launch check → launch |
-| `search-terms-mining` | New negatives and keywords from search terms |
-| `optimize` | Bids, budgets and negatives within guardrails, logged and reversible |
-| `tracking-audit` | Tag Manager tags → GA4 key events → Ads conversion actions, end to end |
+| `search-terms-mining` | New negatives and keywords from search terms, by audience |
+| `optimize` | Stage-based bidding switches, budget shifts within guardrails, country splits; logged and reversible |
 | `search-console-audit` | Cannibalisation, CTR gaps, index coverage, sitemaps |
 
 ## Knowledge the skills share

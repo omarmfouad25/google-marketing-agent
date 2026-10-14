@@ -4,6 +4,7 @@ What to ask, what you get back, and how changes work. Everything here is plain l
 skills by name.
 
 - [Everyday workflows](#everyday-workflows)
+- [Planning and building campaigns](#planning-and-building-campaigns)
 - [Making changes safely](#making-changes-safely)
 - [Working with several accounts](#working-with-several-accounts)
 - [Reports](#reports)
@@ -14,6 +15,10 @@ skills by name.
 
 | When | Ask | Skill | You get |
 |---|---|---|---|
+| Planning a quarter or a restructure | "Plan our Q4 campaigns with a budget of 12,000 a month" | `campaign-architect` | A plan from your own data: campaigns, types, names, budget split, bidding stages, goals, negative lists |
+| Building a Search campaign | "Build the Search campaign for <product> from the plan" | `search-launch` | Keywords and ad copy to approve, then a paused build, pre-launch check and launch preview |
+| Building Demand Gen | "Launch Demand Gen for <product> with the images in ./creative" | `demand-gen-launch` | Image check, one ad group per language, audience, paused build, pre-launch check |
+| Leads don't add up | "Ads shows 0 conversions but we got leads" | `tracking-audit` | Tag Manager → GA4 → Ads checked and fixed, so every lead counts once |
 | Taking over or reviewing an account | "Audit my Google Ads account for the last 30 days" | `ads-audit` | Score out of 100 across six areas, findings with the money at stake, a fix list naming the tool that applies each fix |
 | Something moved | "Why did cost per lead go up last week?" | `performance-insights` | Week vs previous week, the campaigns and segments behind it, a GA4 cross-check, 2–3 actions |
 | Every Monday | "Weekly check for acme" | `weekly-check` | One-page note: spend vs budget, new search terms to block, disapproved ads, campaigns in learning, anomalies, and proposed changes as previews |
@@ -28,6 +33,30 @@ Plain questions work too, without a skill:
 - "Which queries bring clicks to /pricing in Search Console?"
 - "Is the lead form tag in Tag Manager published?"
 - "Run this GAQL: SELECT campaign.name, metrics.cost_micros FROM campaign WHERE segments.date DURING LAST_7_DAYS"
+
+## Planning and building campaigns
+
+The build skills follow one order, and each step ends with something for you to approve:
+
+1. **Measure first.** *"Are my conversions right?"* (`tracking-audit`). Campaigns that bid on broken conversions
+   learn the wrong thing, so this comes before any build.
+2. **Plan.** *"Plan our campaigns for next quarter."* (`campaign-architect`). It reads the last 30 and 90 days, asks
+   for your tracks, focus products, markets, languages and monthly budget, and returns a plan you approve.
+3. **Copy.** *"Build the Search campaign for <product>."* (`search-launch`) or *"…Demand Gen…"*
+   (`demand-gen-launch`). You approve every headline, description and image before anything is created.
+4. **Build, paused.** Each step is previewed; nothing serves yet.
+5. **Check and launch.** `pre-launch-check` runs on every new campaign; you confirm the launch.
+6. **Review on a rhythm:**
+   - launch day: approvals;
+   - week 1: search terms, locations, cost per lead in Ads and GA4;
+   - week 3: switch bidding from clicks to conversions where there are about 15+ conversions in 30 days;
+   - then `weekly-check` every Monday.
+
+Budget rules the planner applies:
+- every daily budget covers at least one target cost per lead, ideally 2–3;
+- brand campaigns stay small;
+- countries share a campaign until their cost per lead differs by more than about 50%;
+- budget moves stay within the 50% guardrail.
 
 ## Making changes safely
 

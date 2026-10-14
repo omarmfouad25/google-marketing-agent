@@ -6,8 +6,9 @@
 
 **Let Claude (or any AI app that supports MCP) work on your Google Ads, GA4, Search Console and Tag Manager, safely.**
 
-Ask in plain language. The agent audits accounts, explains what changed, writes client-ready reports and makes
-campaign changes, and every change is previewed first, applied only after your yes, logged, and reversible.
+Ask in plain language. The agent plans campaigns and budgets, builds Search and Demand Gen campaigns, audits accounts,
+explains what changed and writes client-ready reports. Every change is previewed first, applied only after your yes,
+logged, and reversible.
 
 ```text
 You:    Audit my Google Ads account for the last 30 days.
@@ -20,16 +21,38 @@ You:    Yes.
 Agent:  Applied (change 3f9c2a1b). You can undo it any time.
 ```
 
-## What you can ask
+## What you can do
+
+### Plan and budget
 
 | Ask | You get |
 |---|---|
-| "Audit my Google Ads account" | A scored audit (measurement, location leaks, wasted search terms, structure, budgets, ad quality) with a prioritised fix list |
+| "Plan our Q4 campaigns" · "How should I split the budget?" | A campaign plan built from the account's own data: which campaigns and types, naming, budget per campaign with a minimum-budget check, bidding stage, goals and negative lists |
+| "Restructure this account" | A diagnosis of what wastes money today, then the new structure and a transition plan |
+
+### Build campaigns
+
+| Ask | You get |
+|---|---|
+| "Build the Search campaign for <product>" | Themed keywords, ad copy for your approval (character counts, policy-safe wording, second language), then the campaign, ad groups, ads, sitelinks, callouts, goal and negatives, all created **paused** |
+| "Launch Demand Gen with these images" | An image check, one ad group per language, an audience from your customer list, lookalikes and custom segments, created **paused**, then a first-week read |
+| "Is this campaign ready to launch?" | A pass/fix table (goal, bidding, channels, locations, audience, assets, approvals), then a launch preview |
+| "Set up lead tracking" · "0 conversions but we got leads" | Tag Manager → GA4 → Google Ads checked end to end, then fixed so every lead is counted once, by audience |
+
+### Analyse and optimise
+
+| Ask | You get |
+|---|---|
+| "Audit my Google Ads account" | A score out of 100 across measurement, location leaks, wasted search terms, structure, budgets and ad quality, with a prioritised fix list |
 | "Why did cost per lead go up last week?" | What changed, which campaigns and segments caused it, checked against GA4 leads, and 2–3 actions |
-| "Weekly check for acme" | A one-page control note: spend vs budget, new search terms to block, disapproved ads, anomalies |
-| "Is this campaign ready to launch?" | A pass/fix table for one paused campaign, then a launch preview if everything passes |
-| "Make the September report for acme" | A branded, self-contained HTML report you print to PDF |
-| "Pause the brand campaign" · "Add these negatives" | A preview → your yes → applied, logged, reversible |
+| "Weekly check for acme" | Spend vs budget, new search terms to block, disapproved ads, anomalies, with proposed changes as previews |
+| "Pause the brand campaign" · "Raise the budget to 150" · "Add these negatives" | A preview → your yes → applied, logged, reversible |
+
+### Report
+
+| Ask | You get |
+|---|---|
+| "Make the September report for acme" | A branded, self-contained HTML report (Ads, GA4, Search Console) you print to PDF |
 | "Which queries is our blog ranking for?" · "Is the lead form tag firing?" | Search Console and Tag Manager answers from the same login |
 
 More examples: **[docs/usage.md](docs/usage.md)**.
@@ -87,7 +110,7 @@ On Claude Code older than 2.1.275, run `/plugin marketplace add omarmfouad25/goo
 
 | Part | What it is |
 |---|---|
-| **6 skills** | Workflows that tell the agent what to check and what good looks like: `setup`, `ads-audit`, `performance-insights`, `pre-launch-check`, `weekly-check`, `monthly-report`. [docs/skills.md](docs/skills.md) |
+| **10 skills** | Workflows that tell the agent what to check, in which order and what good looks like. Plan: `campaign-architect`. Build: `search-launch`, `demand-gen-launch`, `pre-launch-check`, `tracking-audit`. Analyse: `ads-audit`, `performance-insights`, `weekly-check`. Report: `monthly-report`. Setup: `setup`. [docs/skills.md](docs/skills.md) |
 | **56 tools** | Google Ads reporting and changes (28), GA4 (10), Search Console (6), Tag Manager (6), accounts and help (6). 33 are read-only; the 23 that change things load only when an account allows changes. [docs/tools.md](docs/tools.md) |
 | **Knowledge guide** | The `guide` tool serves hard-won notes: API traps, ad policy patterns, access levels, Demand Gen, measurement, benchmarks |
 | **CLI** | `init`, `doctor`, `accounts`, `call`: setup and scripting from your terminal |

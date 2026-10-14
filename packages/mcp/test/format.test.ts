@@ -30,7 +30,11 @@ describe("enum names", () => {
       conversion_goal_campaign_config: { goal_config_level: 3 },
       campaign_criterion: { type: 20 },
       campaign_asset: { field_type: 21 },
+      user_list: { type: 5 },
+      conversion_action: { counting_type: 3 },
     }) as any;
+    expect(typeof r.user_list.type).toBe("string");
+    expect(typeof r.conversion_action.counting_type).toBe("string");
     expect(r.campaign.primary_status_reasons.every((x: unknown) => typeof x === "string")).toBe(true);
     expect(r.conversion_goal_campaign_config.goal_config_level).toBe("CAMPAIGN");
     expect(r.campaign_conversion_goal.origin).toBe("WEBSITE");

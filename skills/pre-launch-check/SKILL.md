@@ -36,7 +36,8 @@ Call `account_profile` (currency, writes). Then run each check with `run_gaql_qu
    Demand Gen keeps them on the ad group:
    `SELECT ad_group.name, ad_group_criterion.type, ad_group_criterion.negative, ad_group_criterion.location.geo_target_constant, ad_group_criterion.language.language_constant FROM ad_group_criterion WHERE campaign.id = <id> AND ad_group_criterion.type IN ('LOCATION', 'LANGUAGE')`.
 5. **Audience (Demand Gen).** `SELECT ad_group.name, ad_group_criterion.type, ad_group_criterion.audience.audience, ad_group_criterion.user_list.user_list FROM ad_group_criterion WHERE campaign.id = <id> AND ad_group_criterion.type IN ('AUDIENCE', 'USER_LIST', 'CUSTOM_AUDIENCE')`.
-   An ad group with no audience signal is a warning (it relies on optimized targeting alone), not a fail.
+   An ad group with no audience signal is a blocker when the campaign targets business buyers, a warning otherwise
+   (it relies on optimized targeting alone).
 6. **Ads and assets.** `SELECT ad_group.name, ad_group_ad.ad.type, ad_group_ad.ad_strength, ad_group_ad.policy_summary.approval_status, ad_group_ad.policy_summary.review_status, ad_group_ad.policy_summary.policy_topic_entries, ad_group_ad.ad.final_urls FROM ad_group_ad WHERE campaign.id = <id>`
    and assets at campaign and account level (`campaign_asset.field_type`, `customer_asset.field_type`). Search: ad strength Good or better, sitelinks and callouts present.
    Demand Gen: the image formats in `guide("demand-gen")`.

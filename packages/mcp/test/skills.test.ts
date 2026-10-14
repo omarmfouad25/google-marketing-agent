@@ -9,7 +9,7 @@ import { listTopics } from "../src/core/guide.js";
 import { fakeServer } from "./fakes.js";
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "../../../skills");
-const EXPECTED = ["ads-audit", "monthly-report", "performance-insights", "pre-launch-check", "setup", "weekly-check"];
+const EXPECTED = ["ads-audit", "campaign-architect", "demand-gen-launch", "monthly-report", "performance-insights", "pre-launch-check", "search-launch", "setup", "tracking-audit", "weekly-check"];
 const TOOL_LIKE = /^(get|ads|ga4|gsc|gtm|run|setup|accounts|account|use|changes)_[a-z0-9_]+$|^guide$/;
 
 const s = fakeServer();
@@ -31,7 +31,7 @@ describe("monthly-report template", () => {
 });
 
 describe("skills", () => {
-  it("ships the six v1 skills", () => {
+  it("ships every skill", () => {
     expect(existsSync(DIR)).toBe(true);
     expect(readdirSync(DIR).filter((d) => existsSync(join(DIR, d, "SKILL.md"))).sort()).toEqual(EXPECTED);
   });
