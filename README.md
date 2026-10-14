@@ -1,5 +1,9 @@
 # google-marketing-agent
 
+[![npm](https://img.shields.io/npm/v/google-marketing-agent)](https://www.npmjs.com/package/google-marketing-agent)
+[![CI](https://github.com/omarmfouad25/google-marketing-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/omarmfouad25/google-marketing-agent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 **Google Ads MCP server + Claude Code skills for Google Ads, GA4, Search Console and Tag Manager.**
 Audit an account, explain performance, produce client-ready reports, and build or optimise campaigns, with every
 change previewed first, logged, and reversible.
