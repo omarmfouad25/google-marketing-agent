@@ -4,65 +4,71 @@
 [![CI](https://github.com/omarmfouad25/google-marketing-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/omarmfouad25/google-marketing-agent/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**Google Ads MCP server + Claude Code skills for Google Ads, GA4, Search Console and Tag Manager.**
-Audit an account, explain performance, produce client-ready reports, and build or optimise campaigns, with every
-change previewed first, logged, and reversible.
+**Let Claude (or any AI app that supports MCP) work on your Google Ads, GA4, Search Console and Tag Manager, safely.**
 
-> **Status: 0.1.** The engine was extracted from a setup running on a live account. Issues and ideas welcome on [GitHub](https://github.com/omarmfouad25/google-marketing-agent/issues).
+Ask in plain language. The agent audits accounts, explains what changed, writes client-ready reports and makes
+campaign changes, and every change is previewed first, applied only after your yes, logged, and reversible.
 
----
+```text
+You:    Audit my Google Ads account for the last 30 days.
+Agent:  Score 68/100. Biggest leak: 31% of spend is from people outside your target countries
+        ("presence or interest" targeting on 2 campaigns). Fix list below, highest impact first…
 
-## Why this exists
+You:    Fix the location targeting on both.
+Agent:  Preview (nothing changed yet): 2 campaigns → people IN the location only. Apply?
+You:    Yes.
+Agent:  Applied (change 3f9c2a1b). You can undo it any time.
+```
 
-Most Google Ads MCP servers are read-only, or they let the model write straight into your account. This one is built
-for **doing the work safely**:
+## What you can ask
 
-- **Preview first.** Every write is validated by Google (`validate_only`) and shown to you. Nothing changes until you
-  confirm.
-- **Logged and reversible.** Each applied change is stored with its prior state. `ads_rollback` reverts it.
-- **Guardrails.** New campaigns and ads are created PAUSED. Budget jumps above a limit need an explicit override.
-  Location targeting is always "people in the location", never the API default that also serves people merely
-  *interested in* it.
-- **Writes off by default**, per account. Agencies can enable one client and keep another read-only.
-- **One login, four products:** Google Ads, GA4, Search Console, Tag Manager.
-- **Skills, not just tools.** Audits, insights and reports encode what to check and what good looks like, learned on
-  a real account.
-
-## What you can do
-
-| Ask your agent | What happens |
+| Ask | You get |
 |---|---|
-| "Audit my Google Ads account" | Scored audit: goals, location leaks, wasted search terms, negatives, Quality Score, budgets, assets, policy issues, prioritised fixes |
-| "Why did cost per lead go up last week?" | Period-over-period insight, with Ads conversions cross-checked against GA4 leads |
-| "Is this campaign ready to launch?" | Pre-launch check of goal, channels, audience, geo, assets and approvals |
-| "Make the monthly report for Acme" | Client-ready HTML report in the client's brand colours |
-| "Pause the brand campaign" / "Raise the budget to 150" | Preview → your confirm → applied, logged, reversible |
-| "Which queries is our blog ranking for?" | Search Console queries, pages, cannibalisation |
-| "Is the lead form tag firing?" | GTM tags, triggers and GA4 key events |
+| "Audit my Google Ads account" | A scored audit (measurement, location leaks, wasted search terms, structure, budgets, ad quality) with a prioritised fix list |
+| "Why did cost per lead go up last week?" | What changed, which campaigns and segments caused it, checked against GA4 leads, and 2–3 actions |
+| "Weekly check for acme" | A one-page control note: spend vs budget, new search terms to block, disapproved ads, anomalies |
+| "Is this campaign ready to launch?" | A pass/fix table for one paused campaign, then a launch preview if everything passes |
+| "Make the September report for acme" | A branded, self-contained HTML report you print to PDF |
+| "Pause the brand campaign" · "Add these negatives" | A preview → your yes → applied, logged, reversible |
+| "Which queries is our blog ranking for?" · "Is the lead form tag firing?" | Search Console and Tag Manager answers from the same login |
 
-## Quick start
+More examples: **[docs/usage.md](docs/usage.md)**.
 
-You need Node.js 20+, a Google account with access to the Google Ads account (and GA4 / Search Console / Tag Manager
-if you use them), and a Google Cloud project. The **[setup guide](docs/setup.md)** walks through every step.
+## How it keeps your account safe
+
+- **Read-only until you say otherwise**, per account. Agencies can allow changes on one client and keep another read-only.
+- **Preview first.** Google validates every change without applying it; nothing happens until you confirm.
+- **Undo.** Every applied change is logged with its previous state; `ads_rollback` puts it back.
+- **Guardrails.** New campaigns and ads start **paused**. Budget jumps above 50% (configurable) need an explicit override.
+  Location targeting is always "people in the location", never Google's default that also includes people merely
+  interested in it.
+- **Your credentials stay on your computer**, in a file only you can read. The agent never sees them.
+
+Details: **[docs/safety.md](docs/safety.md)**.
+
+## Get started
+
+You need **Node.js 20+** and a Google account that can open your Google Ads account. Allow about 15 minutes the first
+time; the full walkthrough with checks is in **[docs/setup.md](docs/setup.md)**.
+
+**1. Create your Google Cloud login (once, about 10 minutes).** A Cloud project with the Google Ads API enabled,
+Explorer access, and a *Desktop app* OAuth client. No developer token needed.
+→ [Setup, part 1](docs/setup.md#part-1-google-cloud-once)
+
+**2. Sign in and pick your accounts.**
 
 ```bash
-# 1. Create your profile (opens the Google sign-in, lists your accounts)
-npx google-marketing-agent init
-
-# 2. Check everything is connected
-npx google-marketing-agent doctor
+npx google-marketing-agent init      # opens Google sign-in, lists every account you can reach
+npx google-marketing-agent doctor    # every line should be ✓
 ```
 
-**Claude Code (plugin: installs the MCP server and the skills):**
+**3. Add it to your AI app.**
 
-```
-/plugin install google-marketing-agent --marketplace omarmfouad25/google-marketing-agent
-```
-
-On Claude Code older than 2.1.275, run `/plugin marketplace add omarmfouad25/google-marketing-agent` first, then
-`/plugin install google-marketing-agent`.
-
-**Any other MCP client** (Claude Desktop, Cursor, Codex…):
+| App | How |
+|---|---|
+| **Claude Code** (tools + skills) | `/plugin install google-marketing-agent --marketplace omarmfouad25/google-marketing-agent` |
+| Claude Code (tools only) | `claude mcp add google-marketing -- npx -y google-marketing-agent` |
+| Claude Desktop, Cursor, others | Add the server below to the app's MCP settings |
 
 ```json
 {
@@ -72,68 +78,53 @@ On Claude Code older than 2.1.275, run `/plugin marketplace add omarmfouad25/goo
 }
 ```
 
-Then ask: *"Run the setup doctor"*, then *"Audit my Google Ads account for the last 30 days."*
+On Claude Code older than 2.1.275, run `/plugin marketplace add omarmfouad25/google-marketing-agent` first, then
+`/plugin install google-marketing-agent`. More apps: [setup, part 3](docs/setup.md#part-3-connect-your-ai-app).
 
-## Skills
+**4. Ask.** Start with *"Run the setup doctor"*, then *"Audit my Google Ads account for the last 30 days."*
 
-Skills install with the Claude Code plugin. You don't call them by name: ask in plain language and the matching skill
-loads.
+## What's inside
 
-| Skill | Use it for |
+| Part | What it is |
 |---|---|
-| `setup` | First-time setup, guided until `doctor` is green |
-| `ads-audit` | Full account audit with a prioritised fix list |
-| `performance-insights` | What changed, why, and what to do about it |
-| `pre-launch-check` | One campaign, before it goes live |
-| `weekly-check` | The weekly control routine |
-| `monthly-report` | Branded, client-ready report |
+| **6 skills** | Workflows that tell the agent what to check and what good looks like: `setup`, `ads-audit`, `performance-insights`, `pre-launch-check`, `weekly-check`, `monthly-report`. [docs/skills.md](docs/skills.md) |
+| **56 tools** | Google Ads reporting and changes (28), GA4 (10), Search Console (6), Tag Manager (6), accounts and help (6). 33 are read-only; the 23 that change things load only when an account allows changes. [docs/tools.md](docs/tools.md) |
+| **Knowledge guide** | The `guide` tool serves hard-won notes: API traps, ad policy patterns, access levels, Demand Gen, measurement, benchmarks |
+| **CLI** | `init`, `doctor`, `accounts`, `call`: setup and scripting from your terminal |
 
-Planned next: `campaign-architect`, `search-launch`, `demand-gen-launch`, `search-terms-mining`, `optimize`,
-`tracking-audit`, `search-console-audit`. See [docs/skills.md](docs/skills.md).
+Skills install with the Claude Code plugin. Other agents that support Agent Skills can load the [`skills/`](skills)
+folder directly.
 
-## Tools
+## Documentation
 
-56 tools (33 with writes off) across four products: Google Ads reporting and GAQL, Google Ads writes (status, budgets, bids,
-keywords, negatives and shared lists, Search and Demand Gen campaigns, RSAs, Demand Gen image ads and audiences,
-extensions, conversion goals), GA4 reporting and key events, Search Console analytics and URL inspection, Tag Manager
-tags/triggers/variables and publishing. Full reference: **[docs/tools.md](docs/tools.md)**.
+| Read this | When you want to |
+|---|---|
+| [Setup](docs/setup.md) | Go from nothing to a working connection, step by step |
+| [Usage](docs/usage.md) | See what to ask for audits, reports, weekly checks and safe changes |
+| [Profiles](docs/profiles.md) | Manage several accounts, defaults, report branding and guardrails |
+| [Safety](docs/safety.md) | Understand previews, guardrails, the change log and undo before allowing changes |
+| [Skills](docs/skills.md) | Know exactly what each skill checks and produces |
+| [Tools](docs/tools.md) | Look up every tool and its parameters |
+| [How it works](docs/how-it-works.md) | See how the parts fit together and where your data lives |
+| [FAQ](docs/faq.md) | Cost, privacy, developer tokens, which apps work |
+| [Troubleshooting](docs/troubleshooting.md) | Fix an error `doctor` couldn't fix for you |
 
-## Multiple accounts (agencies)
+## FAQ in short
 
-One login can serve many accounts through profiles:
+- **Does it cost anything?** The package is free (MIT). The Google APIs it uses are free; you only pay for your ads.
+- **Do I need a Google Ads developer token?** No. Access now comes from your Google Cloud project.
+- **Can it change my campaigns without asking?** No. Accounts are read-only by default, and every change needs your
+  confirmation after a preview.
+- **Where does my data go?** From Google straight to the AI app on your computer. Nothing is sent anywhere else.
 
-```json
-{
-  "default": "acme",
-  "accounts": {
-    "acme":   { "customerId": "1234567890", "currency": "USD", "writes": true },
-    "globex": { "customerId": "2345678901", "currency": "EUR", "writes": false }
-  }
-}
-```
-
-Every tool accepts `account: "globex"`. See [docs/profiles.md](docs/profiles.md).
-
-## Safety
-
-Read **[docs/safety.md](docs/safety.md)** before enabling writes. Short version: writes are off until you turn them
-on per account, every write is a preview until you confirm, and every applied change is logged and reversible.
-
-## Docs
-
-- [Setup](docs/setup.md): Google Cloud project, APIs, OAuth, Ads API access, permissions
-- [Profiles](docs/profiles.md): accounts, defaults, brand, guardrails
-- [Safety](docs/safety.md): preview, guardrails, change log, rollback
-- [Tools](docs/tools.md): every tool and its parameters
-- [Skills](docs/skills.md): what each skill does and how to trigger it
-- [Troubleshooting](docs/troubleshooting.md): common errors and their fixes
+More: [docs/faq.md](docs/faq.md).
 
 ## Contributing
 
-Issues and PRs welcome. Never paste tokens, customer IDs or client data into issues. See
-[CONTRIBUTING.md](CONTRIBUTING.md).
+Issues and pull requests are welcome. Never paste tokens, customer IDs or client data into an issue. See
+[CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ## Licence
 
-MIT. Not affiliated with or endorsed by Google. Google Ads, Google Analytics, Search Console and Tag Manager are
-trademarks of Google LLC.
+MIT © Omar Fouad. Not affiliated with or endorsed by Google. Google Ads, Google Analytics, Search Console and Tag
+Manager are trademarks of Google LLC.

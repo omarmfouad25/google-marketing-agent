@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Documentation rewritten: a shorter README with a 4-step start, a guided setup with a check after each part, and new
+  [usage](docs/usage.md), [how it works](docs/how-it-works.md) and [FAQ](docs/faq.md) pages.
+
 ## 0.1.0
 
 - Skills v1 ship with the plugin: `setup`, `ads-audit`, `performance-insights`, `pre-launch-check`, `weekly-check`, `monthly-report` (branded HTML report template).

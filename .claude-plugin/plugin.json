@@ -1,6 +1,6 @@
 {
   "name": "google-marketing-agent",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Google Ads, GA4, Search Console and Tag Manager for Claude Code: audits, insights, reports and safe campaign management (preview-first, change log, rollback).",
   "author": {
     "name": "Omar Fouad"

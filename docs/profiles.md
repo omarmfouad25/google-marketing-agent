@@ -63,6 +63,7 @@ the directory holds `credentials.json` and `changes/` too, and it is set to `070
 - Every tool except setup_doctor, guide, accounts_list and use_account takes an optional `account` parameter: `get_campaign_performance({ account: "globex" })`.
 - Without it, tools use `default`, or the account picked with `use_account` in the current session.
 - `accounts_list` shows every account your login can reach, and which of them have profiles.
+- `account_profile` shows one profile's settings as the agent sees them (no credentials).
 - In conversation: *"Switch to globex"*, *"Audit acme and globex"*.
 
 ## Commands

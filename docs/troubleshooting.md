@@ -7,7 +7,7 @@ and the fix. This page covers what it can't fix for you.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `invalid_grant` after about a week | OAuth app is External and in **Testing**, so refresh tokens expire after 7 days | Set the app to **In production** (the only option for personal Gmail accounts), or use an Internal app if you are in a Google Workspace organisation ([setup §3](setup.md#3-configure-the-oauth-consent-screen)), then run `init` again |
+| `invalid_grant` after about a week | OAuth app is External and in **Testing**, so refresh tokens expire after 7 days | Set the app to **In production** (the only option for personal Gmail accounts), or use an Internal app if you are in a Google Workspace organisation ([setup 1.4](setup.md#14-configure-the-oauth-consent-screen)), then run `init` again |
 | `invalid_grant` right away | Token revoked, or password changed | Run `init` again |
 | Sign-in asks you to create a passkey and you can't | Google requires extra verification for Tag Manager / GA4 Admin scopes on some accounts | Use the [service account route](setup.md#alternative-service-account-for-tag-manager-and-ga4-admin) for those products |
 | `redirect_uri_mismatch` | OAuth client isn't a **Desktop app** | Create a Desktop app client and run `init` again |
@@ -17,7 +17,7 @@ and the fix. This page covers what it can't fix for you.
 | Symptom | Cause | Fix |
 |---|---|---|
 | `USER_PERMISSION_DENIED` | Login can't reach the account, or `loginCustomerId` is missing for an MCC child | Add the manager ID as `loginCustomerId` in the profile, or get access to the account |
-| Only test accounts visible, or production calls refused | Cloud project is at **Test** level, or the OAuth client is in a different project from the one granted access | Apply for Explorer on the Google Ads API Overview page of the project that owns the OAuth client ([setup §4](setup.md#google-ads-api-access-level)) |
+| Only test accounts visible, or production calls refused | Cloud project is at **Test** level, or the OAuth client is in a different project from the one granted access | Apply for Explorer on the Google Ads API Overview page of the project that owns the OAuth client ([setup 1.3](setup.md#13-get-google-ads-api-access-explorer)) |
 | Keyword Planner returns a permission error at Explorer level | Keyword Planner needs **Basic** access (planning services aren't in Explorer) | Apply for Basic (needs brand verification), or use search terms and keyword status as the demand signal |
 | `CUSTOMER_NOT_ENABLED` | Account is cancelled or not set up | Check the account in Google Ads |
 | Writes refused: "profile is read-only" | `writes` is false | [safety.md](safety.md), then `accounts set <alias> writes true` and restart the client |

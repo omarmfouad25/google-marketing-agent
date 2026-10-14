@@ -1,5 +1,8 @@
 # Safety model
 
+> **In short:** accounts are read-only until you allow changes; every change is a preview until you confirm it;
+> new campaigns start paused; every applied change is logged and can be undone.
+
 An AI agent with write access to an ad account can spend real money. This package is built so that it can only
 change what you approve, and so that anything it changed can be undone.
 
@@ -11,7 +14,13 @@ Every profile starts with `"writes": false`. Write tools load only when at least
 A write against a read-only profile is refused before anything reaches Google:
 
 ```
-REFUSED: profile "globex" is read-only. Set "writes": true for it in accounts.json to allow changes.
+REFUSED: profile "globex" is read-only. Set "writes": true for it in accounts.json to allow changes (see docs/safety.md).
+```
+
+To allow changes on an account, run this and restart your AI app:
+
+```bash
+npx google-marketing-agent accounts set acme writes true
 ```
 
 Agencies can enable writes for the clients they manage day to day and keep the rest read-only.

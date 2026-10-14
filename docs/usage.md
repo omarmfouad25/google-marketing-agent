@@ -1,0 +1,120 @@
+# Usage
+
+What to ask, what you get back, and how changes work. Everything here is plain language: you don't call tools or
+skills by name.
+
+- [Everyday workflows](#everyday-workflows)
+- [Making changes safely](#making-changes-safely)
+- [Working with several accounts](#working-with-several-accounts)
+- [Reports](#reports)
+- [Asking good questions](#asking-good-questions)
+- [Using the tools directly](#using-the-tools-directly)
+
+## Everyday workflows
+
+| When | Ask | Skill | You get |
+|---|---|---|---|
+| Taking over or reviewing an account | "Audit my Google Ads account for the last 30 days" | `ads-audit` | Score out of 100 across six areas, findings with the money at stake, a fix list naming the tool that applies each fix |
+| Something moved | "Why did cost per lead go up last week?" | `performance-insights` | Week vs previous week, the campaigns and segments behind it, a GA4 cross-check, 2–3 actions |
+| Every Monday | "Weekly check for acme" | `weekly-check` | One-page note: spend vs budget, new search terms to block, disapproved ads, campaigns in learning, anomalies, and proposed changes as previews |
+| Before turning a campaign on | "Is the new Demand Gen campaign ready to launch?" | `pre-launch-check` | Pass/fix table (goal, bidding, channels, locations, audience, assets, approvals); a launch preview if everything passes |
+| End of month | "Monthly report for acme, September" | `monthly-report` | A branded HTML file in `reports/` to print to PDF |
+| Something isn't connected | "The doctor is red" · "Add GA4 for acme" | `setup` | Step-by-step fix, re-checked after each step |
+
+Plain questions work too, without a skill:
+
+- "Top 20 search terms by cost this month, and which ones have no conversions"
+- "Which landing pages had the most GA4 key events last week?"
+- "Which queries bring clicks to /pricing in Search Console?"
+- "Is the lead form tag in Tag Manager published?"
+- "Run this GAQL: SELECT campaign.name, metrics.cost_micros FROM campaign WHERE segments.date DURING LAST_7_DAYS"
+
+## Making changes safely
+
+Changes need an account that allows them (`npx google-marketing-agent accounts set <alias> writes true`, then restart
+your AI app). Every change then goes through the same three steps.
+
+**1. Preview.** The agent sends the change to Google in check-only mode. Google validates it in full; nothing changes.
+
+```text
+You:    Add "free", "jobs" and "diy" as negatives on the Brand campaign.
+Agent:  DRY RUN OK (nothing changed)
+        Add 3 negative keyword(s) to campaign 12345678901:
+        - [PHRASE] free
+        - [PHRASE] jobs
+        - [PHRASE] diy
+        Google validated 3 operation(s). Apply?
+```
+
+**2. Apply on your yes.**
+
+```text
+You:    Yes.
+Agent:  APPLIED (changeId: 3f9c2a1b)
+        Revert with ads_rollback { changeId: "3f9c2a1b" }.
+```
+
+**3. Undo if needed.**
+
+```text
+You:    Undo that last change.
+Agent:  DRY RUN OK (nothing changed)
+        Rollback of 3f9c2a1b (ads_add_negative_keywords: …): 3 operation(s). Apply?
+You:    Yes.
+```
+
+Ask *"What changed on acme this week?"* to see the change log (`changes_list`).
+
+What to expect:
+
+- New campaigns and ads are always created **paused**. Going live is a separate change you confirm.
+- A budget change larger than 50% (or your profile's limit) is refused unless you explicitly ask to override it.
+- On a read-only account the agent tells you how to allow changes; it never works around it.
+- Undo restores the values from the time of the change, overwriting anything edited since. Tag Manager and GA4 changes
+  aren't undone automatically: re-publish an earlier Tag Manager version instead.
+
+Full details: [safety.md](safety.md).
+
+## Working with several accounts
+
+Each account you added in `init` is a profile with a short name (alias).
+
+- Name the account in your question: *"Weekly check for globex"*, *"Audit acme and globex"*.
+- Switch the default for the conversation: *"Switch to globex"*.
+- See everything your login can reach: *"Which accounts can you see?"*
+- See one account's settings (currency, linked properties, whether changes are allowed): *"Show acme's profile"*.
+
+Agencies typically allow changes only on the clients they manage day to day and keep the rest read-only.
+More: [profiles.md](profiles.md).
+
+## Reports
+
+*"Monthly report for acme"* builds last month's report; name a month for another one. The file is saved as
+`reports/<alias>-<YYYY-MM>.html` in the folder your AI app is working in.
+
+- **Branding** comes from the profile's `brand` (name, logo file, two colours); without it the report uses a neutral
+  theme. See [profiles.md](profiles.md#fields).
+- **Sections** for GA4 and Search Console appear only when the profile has them; otherwise the report says
+  "not connected" instead of guessing.
+- **PDF:** open the file in a browser → Print → Save as PDF. The layout is set up for A4.
+- Add your own commentary: *"…and add this summary: …"* or *"…with next month's plan: …"*.
+
+## Asking good questions
+
+- **Name the period.** "last 30 days", "September", "1–14 October vs the two weeks before".
+- **Name the account** when you have more than one.
+- **Say what matters**: "we care about form leads, not calls", "target cost per lead is 40".
+- **Ask for evidence** when something sounds off: "show me the search terms behind that".
+- **One change at a time** while you build trust: review the preview, then confirm.
+
+## Using the tools directly
+
+Every tool also runs from your terminal, which is handy for scripts and scheduled checks:
+
+```bash
+echo '{ "dateRange": "LAST_7_DAYS" }' > args.json
+npx google-marketing-agent call get_campaign_performance args.json
+```
+
+Tool names and parameters: [tools.md](tools.md). Changes run from the terminal follow the same rules: they are
+previews unless the arguments include `"confirm": true`.
