@@ -117,6 +117,12 @@ describe("gtm_versions", () => {
     const r = JSON.parse(await run("gtm_versions", { versionId: "7" }));
     expect(r).toMatchObject({ from: "5", to: "7", tags: { added: ["T"] } });
   });
+
+  it("skips deleted versions when picking the previous one", async () => {
+    setup({ headers: [{ containerVersionId: "5" }, { containerVersionId: "6", deleted: true }, { containerVersionId: "7" }], versions: { "5": { tag: [] }, "7": { tag: [{ name: "T" }] } } });
+    const r = JSON.parse(await run("gtm_versions", { versionId: "7" }));
+    expect(r).toMatchObject({ from: "5", to: "7" });
+  });
 });
 
 describe("gtm_live_check", () => {
@@ -139,6 +145,14 @@ describe("gtm_live_check", () => {
     vi.unstubAllGlobals();
     expect(fetchMock.mock.calls[0][0]).toBe("https://www.googletagmanager.com/gtm.js?id=GTM-TEST");
     expect(r).toMatchObject({ container: "GTM-TEST", liveVersion: "7", found: ["AbC-1", "generate_lead"], missing: ["G-TEST123"] });
+  });
+
+  it("explains a network failure", async () => {
+    setup({ live });
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("timeout"); }));
+    const r = await run("gtm_live_check", { expect: ["x"] });
+    vi.unstubAllGlobals();
+    expect(r).toBe("Could not reach googletagmanager.com for GTM-TEST: timeout. Check the network and try again.");
   });
 
   it("explains a non-200 response", async () => {

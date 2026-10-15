@@ -76,7 +76,7 @@ export function registerGtmVersions(tool: Tool) {
       let from = compareTo;
       if (!from && versionId === "workspace") from = live.containerVersionId!;
       if (!from) {
-        const ids = ((await c.version_headers.list({ parent })).data.containerVersionHeader ?? []).map((h) => Number(h.containerVersionId)).filter((n) => n < Number(versionId));
+        const ids = ((await c.version_headers.list({ parent })).data.containerVersionHeader ?? []).filter((h) => !h.deleted).map((h) => Number(h.containerVersionId)).filter((n) => n < Number(versionId));
         if (!ids.length) return text(`Version ${versionId} has no earlier version to compare with.`);
         from = String(Math.max(...ids));
       }
@@ -96,7 +96,12 @@ export function registerGtmVersions(tool: Tool) {
       const live = (await gtm(ctx).accounts.containers.versions.live({ parent })).data as Snapshot & { containerVersionId?: string };
       const wanted = expect ?? expectedStrings(live);
       const url = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(publicId)}`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+      let res: Response;
+      try {
+        res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+      } catch (e) {
+        return text(`Could not reach googletagmanager.com for ${publicId}: ${(e as Error).message}. Check the network and try again.`);
+      }
       if (!res.ok) return text(`gtm.js returned ${res.status} for ${publicId}: the container is not published or the ID is wrong.`);
       const body = await res.text();
       return json({
