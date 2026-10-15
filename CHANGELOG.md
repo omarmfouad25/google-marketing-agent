@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.3.0 — 2026-10-15
+
+Measurement: plan, build, publish and verify tracking in Tag Manager, GA4 and Google Ads. Guide:
+[docs/tracking.md](docs/tracking.md).
+
+### Added
+
+- 7 tools (63 in total, 37 with writes off):
+  - `gtm_build`: tags, triggers and variables from typed recipes (data-layer variable, custom event trigger, link
+    click trigger, GA4 event tag, Ads conversion tag, with conditions, negation and consent), with a pre-flight that
+    blocks duplicate names, missing variables, disabled built-ins and unknown triggers.
+  - `gtm_versions`: list container versions; diff two versions, or the workspace against live.
+  - `gtm_live_check`: check the live `gtm.js` serves every expected conversion label, event name and measurement ID.
+  - `gtm_builtin_variables`: list, enable or disable built-in variables.
+  - `gtm_delete`: delete from the workspace, refused while anything references it.
+  - `ga4_custom_dimensions`: list, register or archive custom dimensions.
+  - `ads_create_conversion_action`: new website conversion action; prints the ID and label for the tag.
+- 4 skills: `tracking-plan`, `gtm-build` (with a Conversion Linker check; conversion value sent only when the site
+  knows a real one), `event-audit`, `consent-audit`.
+- `guide("gtm")`: recipes, naming, Conversion Linker, publish checklist, rollback.
+- [docs/tracking.md](docs/tracking.md): walkthrough, recipe reference, test matrix, undo, troubleshooting.
+
+### Changed
+
+- `tracking-audit` hands Tag Manager fixes to `gtm-build` and full plans to `tracking-plan`.
+- `guide("measurement")` covers success signals, dedup, consent and live testing.
+- Tag Manager helpers moved to a shared module.
+
 ## 0.2.0
 
 - Four new skills for planning and building, following a method proven on a live lead-gen account: `campaign-architect`

@@ -42,7 +42,7 @@ Agencies: one project serves every client. It belongs to you, not to a client.
 |---|---|
 | **Google Ads API** | Everything in Google Ads (required) |
 | Google Analytics Data API | GA4 reports |
-| Google Analytics Admin API | GA4 key events |
+| Google Analytics Admin API | GA4 key events and custom dimensions |
 | Google Search Console API | Search Console |
 | Tag Manager API | Tag Manager |
 
@@ -201,7 +201,7 @@ Add this server to the app's MCP configuration and restart the app:
 The skills are Agent Skills in the repo's [`skills/`](../skills) folder; apps that support Agent Skills can load them
 from there.
 
-**✅ Check:** the app lists the `google-marketing` server with 33 tools (56 once an account allows changes).
+**✅ Check:** the app lists the `google-marketing` server with 37 tools (63 once an account allows changes).
 
 ---
 
@@ -224,7 +224,7 @@ Every profile starts read-only: the agent can report and suggest, but not change
 npx google-marketing-agent accounts set acme writes true
 ```
 
-Restart your AI app so the 23 change tools load. Even then, every change is a preview until you confirm it.
+Restart your AI app so the 26 change tools load. Even then, every change is a preview until you confirm it.
 
 ## Alternative: service account for Tag Manager and GA4 Admin
 

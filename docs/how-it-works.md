@@ -6,8 +6,8 @@ changes, and it talks to Google's APIs with your own login. There is no server i
 ```mermaid
 flowchart LR
   you([You]) -->|plain language| app["AI app<br/>Claude Code · Claude Desktop · Cursor"]
-  app -->|loads| skills["Skills<br/>audit · insights · weekly · report · launch check · setup"]
-  app <-->|MCP| server["google-marketing-agent<br/>56 tools · guide"]
+  app -->|loads| skills["Skills<br/>plan · build · tracking · audit · insights · report · setup"]
+  app <-->|MCP| server["google-marketing-agent<br/>63 tools · guide"]
   server --> cfg[("~/.config/google-marketing-agent<br/>credentials · profiles · change log")]
   server <-->|your OAuth login| google["Google APIs<br/>Ads · GA4 · Search Console · Tag Manager"]
 ```

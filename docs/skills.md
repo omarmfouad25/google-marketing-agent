@@ -127,12 +127,79 @@ Checks Tag Manager tags and triggers, GA4 key events, Google Ads conversion acti
 Reconciles them with GA4 lead events and proposes a matrix where every lead is counted once, by audience. Then it
 fixes in a safe order, each step previewed:
 1. data layer events on the site;
-2. Tag Manager, published only after you see the changes;
+2. Tag Manager: hands the variables, triggers and tags to `gtm-build`, published only after you see the changes;
 3. GA4 key events;
-4. Ads actions;
+4. Ads actions (new ones with `ads_create_conversion_action`);
 5. one custom goal per audience.
 
+It's the diagnostic entry point. For a full plan it sends you to `tracking-plan`; for the build, to `gtm-build`.
+
 **You get:** the current-vs-target matrix, the applied changes and a verification checklist.
+
+## Measurement (0.3)
+
+The flow is **`tracking-plan` → `gtm-build` → `event-audit`**, with `tracking-audit` as the way in when something is
+already broken and `consent-audit` for consent. Walkthrough with examples: [tracking.md](tracking.md).
+
+### `tracking-plan`
+
+**Say:** "Set up tracking", "What should we track?", "Tracking plan for acme.com", "We're launching a new site"
+
+1. One interview: what a lead is worth, lead types, how pages separate audiences (`/business/` vs `/consumer/`),
+   contact channels (forms, messaging and `tel:` links, booking widgets), consent regions, who implements the site.
+2. Reads what exists so nothing is duplicated: `gtm_overview`, `gtm_list`, `ga4_list_key_events`,
+   `ga4_custom_dimensions`, Ads conversion actions and goals (`run_gaql_query`).
+3. Writes the plan. Nothing is changed.
+
+**You get:** one plan document: event matrix, a copy-ready data-layer contract for developers (pushed only when the
+server confirms the lead; `value` and `currency` only when the site knows a real value), custom dimensions to
+register, Ads actions and goals, consent per tag, naming, and the build order for `gtm-build`.
+
+### `gtm-build`
+
+**Say:** "Build the tracking", "Implement the tracking plan", "Create the triggers and tags", "Add WhatsApp click
+tracking", "Track phone clicks"
+
+1. Baseline: notes the live version as the rollback target, stops on unexplained unpublished changes, and checks for
+   a Conversion Linker (proposes one with `gtm_upsert` when Ads conversion tags need it).
+2. Prerequisites: built-ins (`gtm_builtin_variables`), custom dimensions (`ga4_custom_dimensions`), new Ads actions
+   (`ads_create_conversion_action`, which prints the ID and label).
+3. Builds with `gtm_build`, each previewed: data-layer variables → triggers (audience split with one regex, negated
+   on the twin) → GA4 event tags (every parameter mapped) → Ads conversion tags on the same triggers → consent.
+   Ads tags send `value`/`currency` only when the site pushes a real value; otherwise the action's default applies.
+4. Pauses junk tags (`gtm_upsert`); deletes (`gtm_delete`) only when you ask.
+5. Shows the full workspace diff (`gtm_versions`), publishes on your yes (`gtm_publish`), runs `gtm_live_check`, then
+   marks key events (`ga4_set_key_event`) once events fire.
+
+**You get:** a build log with every ID and change ID, the approved diff, the published and rollback versions, the
+live check and a test matrix to run.
+
+### `event-audit`
+
+**Say:** "Audit our events", "Are we double counting?", "GA4 events are a mess", "Clean up our conversions"
+
+Read-only. Checks:
+- **Tag Manager:** tags with no trigger, duplicates on one trigger, conversions on page views, text triggers, GA4/Ads
+  pairs with different triggers, missing variables, missing Conversion Linker, constant `0` values, consent not set.
+- **GA4** (`ga4_custom_report`, 30 days ending 3 days ago): unused key events, events that never arrive, near-duplicate
+  names, parameters not registered as custom dimensions.
+- **Google Ads:** actions without conversions, primary page-view actions, actions nothing bids on.
+- A like-for-like cross-check: GA4 leads from `google / cpc` against Ads conversions.
+
+**You get:** a findings table (severity, evidence, fix tool) and a fix list for `gtm-build`.
+
+### `consent-audit`
+
+**Say:** "Check consent mode", "Are tags respecting consent?", "GDPR cookie banner check", "Consent Mode v2"
+
+1. Classifies every tag (`gtm_list`, `gtm_get`): ads, analytics or vendor pixel, with its consent settings.
+2. Looks for a Consent Mode v2 default on Consent Initialization covering `ad_storage`, `analytics_storage`,
+   `ad_user_data` and `ad_personalization`, denied in opt-in regions.
+3. Fixes, each previewed: `gtm_build` (recipe tags) or `gtm_upsert` (others), then the same review, publish and live
+   check as `gtm-build`.
+
+**You get:** the tag inventory, the default check, findings and fixes, and a checklist for your developers (default
+before any tag, region logic that fails closed, no `<noscript>` pixels). A technical check, not legal advice.
 
 ## Planned
 
@@ -153,5 +220,6 @@ package. That way the same knowledge is available in any MCP client, even withou
 | `policy` | Common disapprovals and how to rewrite around them |
 | `access` | API access levels, OAuth token expiry, service accounts |
 | `demand-gen` | Asset specs, audiences, channels, reading the first week |
-| `measurement` | Conversion goals, key events, reconciling Ads with GA4 |
+| `measurement` | Conversion goals, key events, reconciling Ads with GA4, success signals, consent, live tests |
+| `gtm` | Tag Manager recipes, naming, Conversion Linker, publish checklist, rollback |
 | `benchmarks` | How to read CPC, CTR and CPL by campaign type |

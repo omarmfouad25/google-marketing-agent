@@ -37,7 +37,33 @@ Agent:  Applied (change 3f9c2a1b). You can undo it any time.
 | "Build the Search campaign for <product>" | Themed keywords, ad copy for your approval (character counts, policy-safe wording, second language), then the campaign, ad groups, ads, sitelinks, callouts, goal and negatives, all created **paused** |
 | "Launch Demand Gen with these images" | An image check, one ad group per language, an audience from your customer list, lookalikes and custom segments, created **paused**, then a first-week read |
 | "Is this campaign ready to launch?" | A pass/fix table (goal, bidding, channels, locations, audience, assets, approvals), then a launch preview |
-| "Set up lead tracking" · "0 conversions but we got leads" | Tag Manager → GA4 → Google Ads checked end to end, then fixed so every lead is counted once, by audience |
+
+### Set up and fix tracking
+
+Plan what to track, build it in Tag Manager from typed recipes, publish after you see the diff, then check what
+visitors actually get. Every tag, trigger and variable is previewed first; the previous live version is the rollback.
+
+```text
+You:    Track form leads and WhatsApp clicks on acme.com, split business and consumer.
+Agent:  Plan: generate_lead and contact_click, split by /business/ vs /consumer/, 4 Ads actions, 2 goals,
+        plus the dataLayer code for your developers. Build it?
+You:    Yes.
+Agent:  Preview 1 of 12: CREATE variables "DLV - form_name" (nothing changed). Create it? …
+Agent:  Workspace vs live version 12: 4 variables, 4 triggers, 6 tags added. Publish as "2026-10-15 lead tracking"?
+You:    Yes.
+Agent:  Version 13 is live (rollback: version 12). Live check ✓ every label and event found in gtm.js.
+        Next: the test matrix, one real lead per row.
+```
+
+| Ask | Skill | You get |
+|---|---|---|
+| "Plan lead tracking for acme.com" | `tracking-plan` | Event matrix, data-layer code for developers, custom dimensions, Ads actions and goals, consent, build order |
+| "Build the tracking plan" · "Add WhatsApp click tracking" | `gtm-build` | Variables, triggers and tags built and previewed one by one, published on your yes, checked live |
+| "Ads shows 0 conversions but we got leads" | `tracking-audit` | Tag Manager → GA4 → Google Ads checked end to end, fixes handed to `gtm-build` |
+| "Are we double counting?" · "Audit our events" | `event-audit` | Duplicates, dead tags, unregistered parameters and unused actions, with a fix list |
+| "Check consent mode" | `consent-audit` | Consent settings on every tag, the Consent Mode v2 default, and a checklist for developers |
+
+Step-by-step guide: **[docs/tracking.md](docs/tracking.md)**.
 
 ### Analyse and optimise
 
@@ -110,9 +136,9 @@ On Claude Code older than 2.1.275, run `/plugin marketplace add omarmfouad25/goo
 
 | Part | What it is |
 |---|---|
-| **10 skills** | Workflows that tell the agent what to check, in which order and what good looks like. Plan: `campaign-architect`. Build: `search-launch`, `demand-gen-launch`, `pre-launch-check`, `tracking-audit`. Analyse: `ads-audit`, `performance-insights`, `weekly-check`. Report: `monthly-report`. Setup: `setup`. [docs/skills.md](docs/skills.md) |
-| **56 tools** | Google Ads reporting and changes (28), GA4 (10), Search Console (6), Tag Manager (6), accounts and help (6). 33 are read-only; the 23 that change things load only when an account allows changes. [docs/tools.md](docs/tools.md) |
-| **Knowledge guide** | The `guide` tool serves hard-won notes: API traps, ad policy patterns, access levels, Demand Gen, measurement, benchmarks |
+| **14 skills** | Workflows that tell the agent what to check, in which order and what good looks like. Plan: `campaign-architect`. Build: `search-launch`, `demand-gen-launch`, `pre-launch-check`. Tracking: `tracking-plan`, `gtm-build`, `tracking-audit`, `event-audit`, `consent-audit`. Analyse: `ads-audit`, `performance-insights`, `weekly-check`. Report: `monthly-report`. Setup: `setup`. [docs/skills.md](docs/skills.md) |
+| **63 tools** | Google Ads reporting and changes (29), GA4 (11), Search Console (6), Tag Manager (11), accounts and help (6). 37 are always available; the 26 that only change things load when an account allows changes. [docs/tools.md](docs/tools.md) |
+| **Knowledge guide** | The `guide` tool serves hard-won notes: API traps, ad policy patterns, access levels, Demand Gen, measurement, Tag Manager, benchmarks |
 | **CLI** | `init`, `doctor`, `accounts`, `call`: setup and scripting from your terminal |
 
 Skills install with the Claude Code plugin. Other agents that support Agent Skills can load the [`skills/`](skills)
@@ -124,6 +150,7 @@ folder directly.
 |---|---|
 | [Setup](docs/setup.md) | Go from nothing to a working connection, step by step |
 | [Usage](docs/usage.md) | See what to ask for audits, reports, weekly checks and safe changes |
+| [Tracking](docs/tracking.md) | Plan, build, publish and verify lead tracking in Tag Manager, GA4 and Google Ads |
 | [Profiles](docs/profiles.md) | Manage several accounts, defaults, report branding and guardrails |
 | [Safety](docs/safety.md) | Understand previews, guardrails, the change log and undo before allowing changes |
 | [Skills](docs/skills.md) | Know exactly what each skill checks and produces |

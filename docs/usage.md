@@ -5,6 +5,7 @@ skills by name.
 
 - [Everyday workflows](#everyday-workflows)
 - [Planning and building campaigns](#planning-and-building-campaigns)
+- [Tracking](#tracking)
 - [Making changes safely](#making-changes-safely)
 - [Working with several accounts](#working-with-several-accounts)
 - [Reports](#reports)
@@ -19,6 +20,8 @@ skills by name.
 | Building a Search campaign | "Build the Search campaign for <product> from the plan" | `search-launch` | Keywords and ad copy to approve, then a paused build, pre-launch check and launch preview |
 | Building Demand Gen | "Launch Demand Gen for <product> with the images in ./creative" | `demand-gen-launch` | Image check, one ad group per language, audience, paused build, pre-launch check |
 | Leads don't add up | "Ads shows 0 conversions but we got leads" | `tracking-audit` | Tag Manager → GA4 → Ads checked and fixed, so every lead counts once |
+| New site or new lead types | "Plan lead tracking for acme.com" | `tracking-plan` | Event matrix, data-layer code for developers, custom dimensions, Ads actions, consent, build order |
+| Plan approved | "Build the tracking plan" | `gtm-build` | Variables, triggers and tags previewed one by one, published on your yes, checked live |
 | Taking over or reviewing an account | "Audit my Google Ads account for the last 30 days" | `ads-audit` | Score out of 100 across six areas, findings with the money at stake, a fix list naming the tool that applies each fix |
 | Something moved | "Why did cost per lead go up last week?" | `performance-insights` | Week vs previous week, the campaigns and segments behind it, a GA4 cross-check, 2–3 actions |
 | Every Monday | "Weekly check for acme" | `weekly-check` | One-page note: spend vs budget, new search terms to block, disapproved ads, campaigns in learning, anomalies, and proposed changes as previews |
@@ -57,6 +60,21 @@ Budget rules the planner applies:
 - brand campaigns stay small;
 - countries share a campaign until their cost per lead differs by more than about 50%;
 - budget moves stay within the 50% guardrail.
+
+## Tracking
+
+Plan → build → publish → verify. Each Tag Manager change is a workspace edit until you approve the publish.
+
+| Ask | What happens |
+|---|---|
+| "Plan lead tracking for acme.com: forms and WhatsApp, business and consumer" | `tracking-plan` interviews you once and writes the plan, including the `dataLayer.push` code for your developers |
+| "Build the tracking plan" | `gtm-build` previews each variable, trigger and tag, then shows the workspace diff before publishing |
+| "Add tel: click tracking on the /consumer/ pages as an Ads lead" | One trigger, a GA4 tag and an Ads tag on the same trigger, plus the conversion action if it's missing |
+| "Check the container is live" | `gtm_live_check`: every label and event name found in the `gtm.js` visitors get |
+| "What changed in Tag Manager since version 12?" | `gtm_versions`: tags, triggers and variables added, removed and changed |
+| "Are we double counting?" · "Check consent mode" | `event-audit` · `consent-audit`: findings with evidence and a fix list |
+
+Full walkthrough, recipe reference, test matrix and undo: [tracking.md](tracking.md).
 
 ## Making changes safely
 
@@ -100,7 +118,7 @@ What to expect:
 - A budget change larger than 50% (or your profile's limit) is refused unless you explicitly ask to override it.
 - On a read-only account the agent tells you how to allow changes; it never works around it.
 - Undo restores the values from the time of the change, overwriting anything edited since. Tag Manager and GA4 changes
-  aren't undone automatically: re-publish an earlier Tag Manager version instead.
+  aren't undone automatically: re-publish an earlier Tag Manager version instead ([tracking.md](tracking.md#undo)).
 
 Full details: [safety.md](safety.md).
 

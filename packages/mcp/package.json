@@ -1,6 +1,6 @@
 {
   "name": "google-marketing-agent",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "MCP server + CLI for Google Ads, GA4, Search Console and Tag Manager: audits, insights, reports and safe campaign management (preview-first, change log, rollback).",
   "license": "MIT",
   "author": "Omar Fouad",

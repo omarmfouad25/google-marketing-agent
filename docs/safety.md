@@ -71,6 +71,29 @@ state** of what was changed.
 - Writes fail closed: if the prior-state snapshot can't be taken, or the current budget is unknown for the budget guardrail, the change is refused rather than applied unlogged.
 - The `container` parameter of `gtm_upsert` and `gtm_publish` can target any Tag Manager container the login can see, not only the one in the profile.
 
+## Tag Manager and GA4 writes
+
+The same rules apply (writes on per account, preview first, logged), with these differences:
+
+| | Behaviour |
+|---|---|
+| Workspace vs live | `gtm_build`, `gtm_upsert`, `gtm_delete` and `gtm_builtin_variables` change the **workspace** only. Visitors see nothing until `gtm_publish` |
+| Publish | `gtm_publish` previews the pending changes and the live version first. The skills show the full workspace diff (`gtm_versions` with `versionId: "workspace"`) and wait for your yes |
+| Pre-flight | `gtm_build` refuses duplicate names, missing variables, disabled built-ins, unknown trigger IDs and an `id` of another type: `NOT BUILT (nothing changed)` |
+| Refused deletes | `gtm_delete` refuses anything a tag, trigger or variable still references. The skills pause tags rather than delete them |
+| Verify | `gtm_live_check` reads what visitors actually receive, after publishing |
+| GA4 custom dimensions | Created dimensions apply only to data from then on. Archiving is permanent |
+
+Undo:
+
+- **Before publishing:** Tag Manager → Workspace Changes → Revert, or `gtm_delete` what was just created.
+- **After publishing:** re-publish the previous version with `gtm_publish` and `versionId` (the publish result names
+  it; `gtm_versions` lists all versions).
+- **GA4:** `ga4_set_key_event` with `action: "remove"`; archived custom dimensions can't be restored.
+- **Google Ads conversion actions** created with `ads_create_conversion_action` are removed by `ads_rollback`.
+
+Details: [tracking.md](tracking.md#undo).
+
 ## What the agent can never do
 
 - Change anything on a read-only profile.

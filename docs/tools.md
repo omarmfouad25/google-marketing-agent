@@ -1,13 +1,15 @@
 # Tools reference
 
-56 tools across Google Ads, GA4, Search Console and Tag Manager (33 while every profile has writes off; the write tools, including `ads_rollback`, register only when a profile has `writes: true`). Every tool except setup_doctor, guide, accounts_list and use_account takes an optional `account` (profile
+63 tools across Google Ads, GA4, Search Console and Tag Manager (37 while every profile has writes off; the write tools, including `ads_rollback`, register only when a profile has `writes: true`). `gtm_builtin_variables` and `ga4_custom_dimensions` are always available: they list on any profile, and their enable/create/archive actions need writes. Every tool except setup_doctor, guide, accounts_list and use_account takes an optional `account` (profile
 alias; see [profiles.md](profiles.md)). Date-range tools default to the last 30 days. Money is in the account
 currency (micros conversion is done for you).
 
 `setup_doctor`, `guide`, `accounts_list` and `use_account` work with zero profiles and take no `account` param; `changes_list` and `account_profile` are always available.
 
 **Legend:** 📖 read · ✏️ write: preview unless `confirm: true`, needs a profile with `writes: true`
-(see [safety.md](safety.md))
+(see [safety.md](safety.md)) · 📖✏️ reads on any profile, writes like ✏️
+
+For the tracking workflow these tools serve, see [tracking.md](tracking.md).
 
 ## Setup and accounts
 
@@ -16,7 +18,7 @@ currency (micros conversion is done for you).
 | `setup_doctor` | 📖 | Tests OAuth, each API, the Ads access level and every profile; returns the exact fix for each failure |
 | `accounts_list` | 📖 | Every Google Ads account your login can reach (including MCC children), marking those with profiles |
 | `use_account` | 📖 | Switch the default account for this session |
-| `guide` | 📖 | Expert knowledge by topic: `gotchas`, `policy`, `access`, `demand-gen`, `measurement`, `benchmarks` |
+| `guide` | 📖 | Expert knowledge by topic: `gotchas`, `policy`, `access`, `demand-gen`, `measurement`, `gtm`, `benchmarks` |
 | `changes_list` | 📖 | Recent applied changes for an account, from the change log |
 | `account_profile` | 📖 | The resolved profile: currency, timezone, geos, writes, guardrails, brand, linked GA4/GSC/GTM |
 
@@ -74,6 +76,7 @@ currency (micros conversion is done for you).
 
 | Tool | | What it does |
 |---|---|---|
+| `ads_create_conversion_action` | ✏️ | New website conversion action (lead form, contact click…); prints the conversion ID and label for `gtm_build` |
 | `ads_set_conversion_primary` | ✏️ | Make conversion actions primary (bidding) or secondary (reporting only) |
 | `ads_update_conversion_action` | ✏️ | Rename, re-categorise, change counting (one / many per click) or the primary flag |
 | `ads_create_custom_goal` | ✏️ | Custom goal from specific conversion actions |
@@ -82,6 +85,32 @@ currency (micros conversion is done for you).
 
 > Campaign-level goals override account defaults. A campaign can bid on an empty category even when the right
 > conversion action is "primary". `ads-audit` checks this.
+
+#### `ads_create_conversion_action`
+
+Creates an enabled website (`WEBPAGE`) conversion action. Refused if an action with the same name exists. Once
+applied, it prints the `conversionId` and `conversionLabel` for the `ads_conversion_tag` recipe. `ads_rollback`
+removes it.
+
+| Param | Required | Notes |
+|---|---|---|
+| `name` | yes | Up to 100 characters, no quotes or backslashes |
+| `category` | yes | `SUBMIT_LEAD_FORM`, `CONTACT`, `PHONE_CALL_LEAD`, `BOOK_APPOINTMENT`, `REQUEST_QUOTE`, `SIGNUP`, `OUTBOUND_CLICK`, `PURCHASE`, `PAGE_VIEW`, `DEFAULT` |
+| `countingType` | | `ONE_PER_CLICK` (default, right for leads) or `MANY_PER_CLICK` (purchases) |
+| `value` | | Default value per conversion, used when the tag sends none |
+| `currency` | | Three letters; defaults to the profile currency |
+| `primary` | | Default `true` (used for bidding) |
+| `clickThroughWindowDays` | | 1–90, default 30 |
+
+```json
+{ "name": "Ads - Business Lead - Form", "category": "SUBMIT_LEAD_FORM" }
+```
+
+```text
+APPLIED (changeId: 7d1e40aa)
+…
+For gtm_build ads_conversion_tag: conversionId "123456789", conversionLabel "AbC-dEf_1"
+```
 
 ## GA4
 
@@ -97,6 +126,28 @@ currency (micros conversion is done for you).
 | `ga4_custom_report` | 📖 | Any dimensions and metrics |
 | `ga4_list_key_events` | 📖 | Key events on the property, plus linked Google Ads accounts |
 | `ga4_set_key_event` | ✏️ | Mark or unmark an event as a key event |
+| `ga4_custom_dimensions` | 📖✏️ | List custom dimensions and metrics; register an event parameter as a custom dimension; archive one |
+
+### `ga4_custom_dimensions`
+
+Event parameters (`form_name`, `lead_type`) only show in GA4 reports once registered. Registration isn't
+retroactive: do it before launch. Archiving is permanent.
+
+| Param | Required | Notes |
+|---|---|---|
+| `action` | yes | `list`, `create` or `archive` |
+| `parameterName` | for create | The event parameter (or user property) name, e.g. `form_name` |
+| `displayName` | for create | Shown in GA4 reports, e.g. `Form name` |
+| `scope` | | `EVENT` (default) or `USER` |
+| `description` | | Up to 150 characters |
+| `name` | for archive | `properties/123456789/customDimensions/4`, from `list` |
+
+```json
+{ "action": "create", "parameterName": "form_name", "displayName": "Form name" }
+```
+
+Preview: `CREATE EVENT custom dimension "Form name" (form_name) (nothing changed)`. A parameter already registered in
+that scope is refused.
 
 ## Search Console
 
@@ -111,7 +162,8 @@ currency (micros conversion is done for you).
 
 ## Tag Manager
 
-Changes go into a workspace and are not live until `gtm_publish`.
+Changes go into a workspace and are not live until `gtm_publish`. Tag Manager tools take an optional
+`container` (`GTM-XXXX`, default: the profile's `gtmContainerId`) and `workspaceId` (default: the first workspace) where they apply.
 
 | Tool | | What it does |
 |---|---|---|
@@ -119,8 +171,90 @@ Changes go into a workspace and are not live until `gtm_publish`.
 | `gtm_overview` | 📖 | Live version, workspaces, unpublished changes |
 | `gtm_list` | 📖 | Tags, triggers or variables (compact) |
 | `gtm_get` | 📖 | Full JSON of one tag, trigger or variable |
+| `gtm_versions` | 📖 | List versions, or diff two of them (or the workspace against live) by name |
+| `gtm_live_check` | 📖 | Check the live `gtm.js` visitors receive contains the expected labels and event names |
+| `gtm_builtin_variables` | 📖✏️ | List enabled built-in variables; enable or disable some |
+| `gtm_build` | ✏️ | Create or update a variable, trigger or tag from a typed recipe, with pre-flight checks |
 | `gtm_upsert` | ✏️ | Create or update (shallow merge) a tag, trigger or variable |
+| `gtm_delete` | ✏️ | Delete one tag, trigger or variable; refused while anything references it |
 | `gtm_publish` | ✏️ | Publish the workspace, or re-publish an older version (rollback) |
+
+### `gtm_build`
+
+Builds from a recipe instead of hand-written API JSON. Recipes: `datalayer_variable`, `custom_event_trigger`,
+`link_click_trigger`, `ga4_event_tag`, `ads_conversion_tag` (fields and the exact resources they create:
+[tracking.md](tracking.md#recipe-reference)). Before anything changes, a pre-flight checks that the name is new,
+every `{{variable}}` exists or is an enabled built-in, and every trigger ID exists. Any problem returns
+`NOT BUILT (nothing changed)` with the fix per line. Anything outside the recipes goes through `gtm_upsert`.
+
+| Param | Required | Notes |
+|---|---|---|
+| `recipe` | yes | `{ kind, name, … }` |
+| `id` | | Update this existing entity instead of creating; it must be the type the recipe builds |
+| `confirm` | | Apply; omitted = preview |
+
+```json
+{ "recipe": { "kind": "link_click_trigger", "name": "Link - WhatsApp - Business", "match": "whatsapp",
+  "conditions": [{ "variable": "Page Path", "op": "matchRegex", "value": "^/business/" }] } }
+```
+
+### `gtm_versions`
+
+| Param | Required | Notes |
+|---|---|---|
+| `versionId` | | Omitted: list versions (newest first, live marked). A number: diff it against the previous version. `"workspace"`: diff unpublished changes against live |
+| `compareTo` | | Older version to compare against instead |
+
+```json
+{ "versionId": "workspace" }
+```
+
+Returns `added`, `removed` and `changed` (with before/after per field) for tags, triggers and variables.
+
+### `gtm_live_check`
+
+Downloads `https://www.googletagmanager.com/gtm.js?id=<container>` and reports which expected strings are `found` and
+`missing`. By default it expects every conversion label, GA4 event name and measurement ID of the live version's
+active tags (paused tags and `{{variable}}` values are skipped). Run it right after `gtm_publish`; the CDN can lag a few
+minutes.
+
+| Param | Required | Notes |
+|---|---|---|
+| `expect` | | Strings to look for instead of the default |
+
+```json
+{ "expect": ["AbC-dEf_1", "generate_lead"] }
+```
+
+### `gtm_builtin_variables`
+
+Recipes that reference `{{Page Path}}` or `{{Click URL}}` need those built-ins enabled.
+
+| Param | Required | Notes |
+|---|---|---|
+| `action` | yes | `list` (enabled built-ins plus the display name → type map), `enable` or `disable` |
+| `types` | for enable/disable | Built-in types, e.g. `["pagePath", "clickUrl"]` |
+| `confirm` | | Apply; omitted = preview |
+
+```json
+{ "action": "enable", "types": ["pagePath", "clickUrl"] }
+```
+
+### `gtm_delete`
+
+Deletes from the workspace (not live until `gtm_publish`). Refused while a tag fires on the trigger, or any tag,
+trigger or variable uses the variable. To keep a tag for later, pause it instead (`gtm_upsert` with
+`resource: { paused: true }`).
+
+| Param | Required | Notes |
+|---|---|---|
+| `entity` | yes | `tags`, `triggers` or `variables` |
+| `id` | yes | From `gtm_list` |
+| `confirm` | | Apply; omitted = preview |
+
+```json
+{ "entity": "tags", "id": "12" }
+```
 
 ## Calling a tool outside an agent
 

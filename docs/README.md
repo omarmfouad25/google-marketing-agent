@@ -8,6 +8,7 @@
 |---|---|
 | [Setup](setup.md) | Go from nothing to a working connection, with a check after each part |
 | [Usage](usage.md) | See what to ask for audits, reports, weekly checks and safe changes |
+| [Tracking](tracking.md) | Plan, build, publish and verify lead tracking in Tag Manager, GA4 and Google Ads |
 | [Profiles](profiles.md) | Manage several accounts, defaults, report branding and guardrails |
 | [Safety](safety.md) | Understand previews, guardrails, the change log and undo before allowing changes |
 | [How it works](how-it-works.md) | See how the parts fit together and where your data lives |
