@@ -30,6 +30,8 @@ export function logged(ctx: Ctx, entry: Parameters<typeof appendChange>[1], appl
   }
   return json(applied);
 }
+/** Headline stays plain text (JSON would escape its quotes); the detail follows as JSON */
+export const preview = (headline: string, detail: object) => text(`${headline}\n\n${JSON.stringify(detail, null, 2)}`);
 export const json = (v: unknown) => text(typeof v === "string" ? v : JSON.stringify(v, null, 2));
 
 export async function containerPath(ctx: Ctx, publicId?: string): Promise<string> {

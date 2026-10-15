@@ -6,7 +6,7 @@ import type { Ctx } from "../core/context.js";
 import { assertWritable } from "../core/runner.js";
 import { text, type Tool } from "../core/tool.js";
 import { BUILTIN_TYPES, Recipe, compile, referencedVariables, type Compiled } from "./recipes.js";
-import { Confirm, Container, Workspace, diff, entityApi, idField, isBuiltInTrigger, json, listAll, logged, workspacePath } from "./shared.js";
+import { Confirm, Container, Workspace, diff, entityApi, idField, isBuiltInTrigger, json, listAll, logged, preview, workspacePath } from "./shared.js";
 
 async function preflight(ctx: Ctx, ws: string, c: Compiled, id?: string): Promise<string[]> {
   const all = await listAll(ctx, ws);
@@ -27,9 +27,6 @@ async function preflight(ctx: Ctx, ws: string, c: Compiled, id?: string): Promis
   }
   return problems;
 }
-
-// headline stays plain text (JSON would escape its quotes); the detail follows as JSON
-const preview = (headline: string, detail: object) => text(`${headline}\n\n${JSON.stringify(detail, null, 2)}`);
 
 export function registerGtmBuild(tool: Tool) {
   tool(

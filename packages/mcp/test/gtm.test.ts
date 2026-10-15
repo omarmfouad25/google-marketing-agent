@@ -6,6 +6,7 @@ import { google } from "googleapis";
 import { AccountStore } from "../src/core/context.js";
 import { defineTool } from "../src/core/tool.js";
 import { registerGtmTools } from "../src/gtm/tools.js";
+import { referencesTo } from "../src/gtm/manage.js";
 import { compareEntities, expectedStrings } from "../src/gtm/versions.js";
 import { listChanges } from "../src/core/changelog.js";
 import { fakeGtm, fakeServer, WS } from "./fakes.js";
@@ -161,5 +162,80 @@ describe("gtm_live_check", () => {
     const r = await run("gtm_live_check", { expect: ["x"] });
     vi.unstubAllGlobals();
     expect(r).toMatch(/gtm\.js returned 404/);
+  });
+});
+
+describe("gtm_builtin_variables", () => {
+  it("lists enabled built-ins with the name ↔ type map, even on a read-only profile", async () => {
+    setup({ builtIns: [PAGE_PATH] }, false);
+    const r = JSON.parse(await run("gtm_builtin_variables", { action: "list" }));
+    expect(r.enabled).toEqual([PAGE_PATH]);
+    expect(r.available["Click URL"]).toBe("clickUrl");
+  });
+
+  it("refuses enable on a read-only profile", async () => {
+    setup({}, false);
+    expect(await run("gtm_builtin_variables", { action: "enable", types: ["clickUrl"], confirm: true })).toMatch(/^REFUSED/);
+  });
+
+  it("previews, skips already-enabled types, then enables and logs", async () => {
+    setup({ builtIns: [PAGE_PATH] });
+    expect(await run("gtm_builtin_variables", { action: "enable", types: ["pagePath"] })).toMatch(/already enabled/);
+    const preview = await run("gtm_builtin_variables", { action: "enable", types: ["pagePath", "clickUrl"] });
+    expect(preview).toMatch(/ENABLE built-in variables: clickUrl \(nothing changed\)/);
+    expect(gtm.calls).toEqual([]);
+    await run("gtm_builtin_variables", { action: "enable", types: ["pagePath", "clickUrl"], confirm: true });
+    expect(gtm.calls[0]).toMatchObject({ method: "built_in_variables.create", args: { parent: WS, type: ["clickUrl"] } });
+    expect(listChanges("acme", 5)[0]).toMatchObject({ tool: "gtm_builtin_variables" });
+  });
+
+  it("disables only enabled types", async () => {
+    setup({ builtIns: [PAGE_PATH] });
+    await run("gtm_builtin_variables", { action: "disable", types: ["pagePath", "clickUrl"], confirm: true });
+    expect(gtm.calls[0]).toMatchObject({ method: "built_in_variables.delete", args: { path: `${WS}/built_in_variables`, type: ["pagePath"] } });
+  });
+
+  it("requires types for enable/disable", async () => {
+    setup();
+    expect(await run("gtm_builtin_variables", { action: "enable" })).toMatch(/types/);
+  });
+});
+
+describe("gtm_delete", () => {
+  const tag = { tagId: "5", name: "Ads - old", type: "awct", firingTriggerId: ["24"], parameter: [{ type: "template", key: "conversionValue", value: "{{DLV - form_name}}" }], path: `${WS}/tags/5` };
+  const trigUsingVar = { triggerId: "30", name: "CE - uses var", type: "customEvent", filter: [{ type: "equals", parameter: [{ type: "template", key: "arg0", value: "{{DLV - lead_type}}" }] }] };
+  const varUsingVar = { variableId: "40", name: "Lookup", type: "smm", parameter: [{ type: "template", key: "input", value: "{{DLV - lang}}" }] };
+
+  it("finds references from tags, triggers and other variables", () => {
+    const all = { tags: [tag], triggers: [trigUsingVar], variables: [varUsingVar], builtIns: [] };
+    expect(referencesTo(all, "triggers", { triggerId: "24", name: "CE" })).toEqual(['tag "Ads - old"']);
+    expect(referencesTo(all, "variables", { name: "DLV - form_name" })).toEqual(['tag "Ads - old"']);
+    expect(referencesTo(all, "variables", { name: "DLV - lead_type" })).toEqual(['trigger "CE - uses var"']);
+    expect(referencesTo(all, "variables", { name: "DLV - lang" })).toEqual(['variable "Lookup"']);
+    expect(referencesTo(all, "tags", tag)).toEqual([]);
+  });
+
+  it("refuses to delete a referenced trigger", async () => {
+    setup({ tags: [tag], triggers: [trigger24] });
+    const r = await run("gtm_delete", { entity: "triggers", id: "24", confirm: true });
+    expect(r).toMatch(/^REFUSED \(nothing changed\)/);
+    expect(r).toContain('tag "Ads - old"');
+    expect(gtm.calls).toEqual([]);
+  });
+
+  it("previews with the full resource, then deletes and logs the prior state", async () => {
+    setup({ tags: [tag], triggers: [trigger24] });
+    const preview = await run("gtm_delete", { entity: "tags", id: "5" });
+    expect(preview).toMatch(/DELETE tags\/5 "Ads - old" \(nothing changed\)/);
+    expect(preview).toMatch(/pausing/i);
+    const applied = await run("gtm_delete", { entity: "tags", id: "5", confirm: true });
+    expect(applied).toMatch(/DELETED from workspace \(not live until gtm_publish\)/);
+    expect(gtm.calls[0]).toMatchObject({ method: "tags.delete", args: { path: `${WS}/tags/5` } });
+    expect(listChanges("acme", 5)[0]).toMatchObject({ tool: "gtm_delete", before: { name: "Ads - old" } });
+  });
+
+  it("is not registered on a read-only profile", () => {
+    setup({}, false);
+    expect(server.tools.gtm_delete).toBeUndefined();
   });
 });
