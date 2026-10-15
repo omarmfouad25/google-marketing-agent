@@ -8,6 +8,15 @@ import { Confirm, Id, rn, rows } from "./shared.js";
 
 const GoalCategory = z.enum(["DEFAULT", "SUBMIT_LEAD_FORM", "OUTBOUND_CLICK", "CONTACT", "PHONE_CALL_LEAD", "PAGE_VIEW", "PURCHASE", "GET_DIRECTIONS"]);
 
+/** conversionId and label from a tag snippet ("send_to': 'AW-<id>/<label>'"), for gtm_build ads_conversion_tag */
+export function parseSendTo(snippets: { event_snippet?: string }[] | undefined) {
+  for (const s of snippets ?? []) {
+    const m = /AW-(\d+)\/([\w-]+)/.exec(s.event_snippet ?? "");
+    if (m) return { conversionId: m[1], conversionLabel: m[2] };
+  }
+  return undefined;
+}
+
 export function registerGoals(tool: Tool) {
   tool(
     "ads_set_conversion_primary",
@@ -31,6 +40,50 @@ export function registerGoals(tool: Tool) {
         })),
         confirm,
       });
+    }
+  );
+
+  tool(
+    "ads_create_conversion_action",
+    "Create a website (WEBPAGE) conversion action, e.g. a lead form or contact click, and print its conversion ID and label for gtm_build ads_conversion_tag. Counting defaults to ONE_PER_CLICK (right for leads). Dry run unless confirm=true; ads_rollback removes it",
+    {
+      name: z.string().min(1).max(100).refine((s) => !/['\\]/.test(s), "no quotes or backslashes"),
+      category: z.enum(["SUBMIT_LEAD_FORM", "CONTACT", "PHONE_CALL_LEAD", "BOOK_APPOINTMENT", "REQUEST_QUOTE", "SIGNUP", "OUTBOUND_CLICK", "PURCHASE", "PAGE_VIEW", "DEFAULT"]),
+      countingType: z.enum(["ONE_PER_CLICK", "MANY_PER_CLICK"]).optional().describe("Default ONE_PER_CLICK; MANY_PER_CLICK for purchases"),
+      value: z.number().positive().optional().describe("Default value per conversion"),
+      currency: z.string().regex(/^[A-Z]{3}$/).optional().describe("Defaults to the profile currency"),
+      primary: z.boolean().optional().describe("Default true (used for bidding)"),
+      clickThroughWindowDays: z.number().int().min(1).max(90).optional().describe("Default 30"),
+      confirm: Confirm,
+    },
+    async ({ name, category, countingType, value, currency, primary, clickThroughWindowDays, confirm }, ctx) => {
+      const refused = assertWritable(ctx);
+      if (refused) return text(refused);
+      if (/['\\]/.test(name)) return text("The name can't contain quotes or backslashes.");
+      const [dup] = await rows(ctx, `SELECT conversion_action.id, conversion_action.name FROM conversion_action WHERE conversion_action.name = '${name}' AND conversion_action.status != 'REMOVED'`);
+      if (dup) return text(`A conversion action named "${name}" already exists (id ${dup.conversion_action.id}). Reuse it, or rename with ads_update_conversion_action.`);
+      const counting = countingType ?? "ONE_PER_CLICK";
+      const resource: Record<string, unknown> = {
+        name,
+        type: enums.ConversionActionType.WEBPAGE,
+        category: enums.ConversionActionCategory[category],
+        counting_type: enums.ConversionActionCountingType[counting],
+        status: enums.ConversionActionStatus.ENABLED,
+        primary_for_goal: primary ?? true,
+        click_through_lookback_window_days: clickThroughWindowDays ?? 30,
+      };
+      if (value !== undefined) resource.value_settings = { default_value: value, default_currency_code: currency ?? ctx.profile.currency, always_use_default_value: false };
+      const result = await runAdsWrite(ctx, {
+        tool: "ads_create_conversion_action",
+        summary: `Create conversion action "${name}" (${category}, ${counting}${value !== undefined ? `, value ${value}` : ""}, ${primary ?? true ? "primary" : "secondary"})`,
+        ops: [{ entity: "conversion_action", operation: "create", resource }],
+        confirm,
+      });
+      const out = result.content[0].text;
+      if (!out.startsWith("APPLIED")) return result;
+      const [row] = await rows(ctx, `SELECT conversion_action.id, conversion_action.tag_snippets FROM conversion_action WHERE conversion_action.name = '${name}' AND conversion_action.status != 'REMOVED'`).catch(() => []);
+      const ids = parseSendTo(row?.conversion_action?.tag_snippets);
+      return text(`${out}\n\n${ids ? `For gtm_build ads_conversion_tag: conversionId "${ids.conversionId}", conversionLabel "${ids.conversionLabel}"` : "Couldn't read the tag snippet yet: run_gaql_query SELECT conversion_action.tag_snippets FROM conversion_action WHERE conversion_action.name = '<name>'"}`);
     }
   );
 

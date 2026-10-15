@@ -24,7 +24,7 @@ describe("registerAll", () => {
   it("registers all tools when a profile is writable", () => {
     const s = fakeServer();
     registerAll(s, storeWith(true));
-    expect(Object.keys(s.tools)).toHaveLength(62);
+    expect(Object.keys(s.tools)).toHaveLength(63);
     expect(s.tools.ads_rollback).toBeDefined();
   });
 

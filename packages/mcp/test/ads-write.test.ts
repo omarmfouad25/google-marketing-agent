@@ -7,6 +7,8 @@ import { defineTool } from "../src/core/tool.js";
 import { registerAdsWriteTools } from "../src/ads/write/index.js";
 import { listChanges } from "../src/core/changelog.js";
 import { snapshotQueries } from "../src/core/snapshot.js";
+import { enums } from "google-ads-api";
+import { parseSendTo } from "../src/ads/write/goals.js";
 import { fakeCustomer, fakeServer } from "./fakes.js";
 
 const credentials = { clientId: "id", clientSecret: "s", refreshToken: "r" };
@@ -37,7 +39,7 @@ describe("ads write tools", () => {
   it("registers every 005 write tool name", () => {
     expect(Object.keys(server.tools).sort()).toEqual([
       "ads_add_extensions", "ads_add_keywords", "ads_add_negative_keywords", "ads_assign_custom_goal",
-      "ads_create_ad_group", "ads_create_custom_goal", "ads_create_demand_gen_ad", "ads_create_demand_gen_campaign",
+      "ads_create_ad_group", "ads_create_conversion_action", "ads_create_custom_goal", "ads_create_demand_gen_ad", "ads_create_demand_gen_campaign",
       "ads_create_rsa", "ads_create_search_campaign", "ads_demand_gen_audience", "ads_negative_list",
       "ads_rollback", "ads_set_campaign_goals", "ads_set_conversion_primary", "ads_set_status", "ads_update_budget",
       "ads_update_conversion_action", "ads_update_cpc_bid", "ads_update_networks",
@@ -180,6 +182,63 @@ describe("ads write tools", () => {
     expect(a.content[0].text).toMatch(/^REFUSED/);
     expect(b.content[0].text).toMatch(/^REFUSED/);
     expect(customer.queries).toEqual([]);
+    expect(customer.calls).toEqual([]);
+  });
+});
+
+describe("ads_create_conversion_action", () => {
+  beforeEach(() => setup());
+  const SNIPPET = [{ type: 3, page_format: 2, event_snippet: "<script>gtag('event', 'conversion', {'send_to': 'AW-123456789/AbC-dEf_1'});</script>" }];
+
+  it("parses conversion ID and label from the event snippet", () => {
+    expect(parseSendTo(SNIPPET)).toEqual({ conversionId: "123456789", conversionLabel: "AbC-dEf_1" });
+    expect(parseSendTo([{ event_snippet: "nothing" }])).toBeUndefined();
+    expect(parseSendTo(undefined)).toBeUndefined();
+  });
+
+  it("dry-runs a WEBPAGE lead action with one-per-click counting by default", async () => {
+    const r = await server.tools.ads_create_conversion_action.handler({ name: "Consumer Lead – Form", category: "SUBMIT_LEAD_FORM" });
+    expect(r.content[0].text).toMatch(/^DRY RUN OK/);
+    const op = (customer.calls[0].ops as any[])[0];
+    expect(op).toMatchObject({ entity: "conversion_action", operation: "create" });
+    expect(op.resource).toMatchObject({
+      name: "Consumer Lead – Form",
+      type: enums.ConversionActionType.WEBPAGE,
+      category: enums.ConversionActionCategory.SUBMIT_LEAD_FORM,
+      counting_type: enums.ConversionActionCountingType.ONE_PER_CLICK,
+      status: enums.ConversionActionStatus.ENABLED,
+      primary_for_goal: true,
+      click_through_lookback_window_days: 30,
+    });
+    expect(op.resource.value_settings).toBeUndefined();
+  });
+
+  it("sets value settings when a value is given, using the profile currency by default", async () => {
+    await server.tools.ads_create_conversion_action.handler({ name: "Booking", category: "BOOK_APPOINTMENT", value: 150 });
+    expect((customer.calls[0].ops as any[])[0].resource.value_settings).toEqual({ default_value: 150, default_currency_code: "EUR", always_use_default_value: false });
+  });
+
+  it("refuses a duplicate name", async () => {
+    customer.query = async () => [{ conversion_action: { id: 9, name: "Booking" } }];
+    const r = await server.tools.ads_create_conversion_action.handler({ name: "Booking", category: "BOOK_APPOINTMENT" });
+    expect(r.content[0].text).toMatch(/already exists \(id 9\)/);
+    expect(customer.calls).toEqual([]);
+  });
+
+  it("after applying, prints the conversion ID and label for gtm_build", async () => {
+    customer.query = async (q: string) => (q.includes("tag_snippets") ? [{ conversion_action: { id: 5, tag_snippets: SNIPPET } }] : []);
+    const r = await server.tools.ads_create_conversion_action.handler({ name: "Consumer Lead – Form", category: "SUBMIT_LEAD_FORM", confirm: true });
+    const out = r.content[0].text as string;
+    expect(out).toMatch(/^APPLIED \(changeId: /);
+    expect(out).toContain('gtm_build ads_conversion_tag: conversionId "123456789", conversionLabel "AbC-dEf_1"');
+    const created = (listChanges("acme", 1)[0] as any).created;
+    expect(created.map((c: any) => c.entity)).toContain("conversion_action");
+  });
+
+  it("rejects names with quotes", async () => {
+    // fakeServer skips zod parsing, so the handler must check this itself (GAQL safety)
+    const r = await server.tools.ads_create_conversion_action.handler({ name: "Bob's form", category: "CONTACT" });
+    expect(r.content[0].text).toMatch(/can't contain quotes/);
     expect(customer.calls).toEqual([]);
   });
 });
