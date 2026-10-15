@@ -69,11 +69,15 @@ Call `account_profile` first (container, property, currency, writes). Use `guide
      lead_type: "form",             // form | messaging | phone | email | booking
      product: "…",                  // product or service the lead is about
      page_language: "en",
-     value: 0,                      // number, no currency symbol
-     currency: "USD",
+     value: 120,                    // optional: only when the site knows a real value (number, no symbol)
+     currency: "USD",               // optional: only together with value
      event_id: "<uuid generated once>"
    });
    ```
+
+   Omit `value` and `currency` when the site doesn't know a real value for this lead: never push a placeholder `0`.
+   A value sent by the tag overrides the Ads action's default value, so a `0` records every conversion as worthless
+   and breaks value-based bidding. Without a site value, the action's default value (step 6) applies.
 
    Link clicks (messaging, `tel:`, `mailto:`) need no site code: Tag Manager catches them. List every link variant
    per audience (`wa.me`, `api.whatsapp.com`, a footer number such as `+15550100`).
@@ -84,7 +88,8 @@ Call `account_profile` first (container, property, currency, writes). Use `guide
    GA4's "(other)" row and the custom dimension quota.
 6. **Ads actions and goals ("New Ads conversion actions").** A list that feeds `ads_create_conversion_action`: `name`
    (naming below), `category` (`SUBMIT_LEAD_FORM`, `CONTACT`, `PHONE_CALL_LEAD`, `BOOK_APPOINTMENT`, `PURCHASE`…),
-   `countingType` (`ONE_PER_CLICK` for leads), `value`/`currency` if leads have a known worth, `primary`. Mark which
+   `countingType` (`ONE_PER_CLICK` for leads), `value`/`currency` as the action's default when leads have a known average worth (used whenever the tag sends no
+   value; see step 4), `primary`. Mark which
    existing actions are reused, which become secondary (`ads_set_conversion_primary`), and one custom goal per
    audience (`ads_create_custom_goal`, then `ads_assign_custom_goal` to that audience's campaigns).
 7. **Consent.** Per tag: which consent types it needs (`ad_storage`, `analytics_storage`, `ad_user_data`,

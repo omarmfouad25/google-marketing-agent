@@ -30,6 +30,9 @@ for counting and freshness. Everything here is read-only.
    - tags with no firing trigger (they never run);
    - paused tags still referenced: another tag's setup/teardown sequencing points at them, or the plan still counts
      on them for a key event or primary Ads action;
+   - Ads conversion tags but no Conversion Linker (no `gclidw` tag on All Pages and no Google tag configured with
+     the `AW-` ID): Safari/ITP conversions go unattributed;
+   - Ads conversion tags sending a constant `0` value (it overrides the action's default value);
    - duplicates: two tags with the same event name, conversion label or measurement ID on the same trigger;
    - conversions on page views (All Pages, Page View or DOM Ready triggers on an Ads conversion tag);
    - text or element-visibility triggers (fragile: they break silently when copy or language changes);
@@ -52,13 +55,19 @@ for counting and freshness. Everything here is read-only.
    - Goals: `SELECT custom_conversion_goal.id, custom_conversion_goal.name, custom_conversion_goal.conversion_actions FROM custom_conversion_goal`.
    Check: enabled actions with no conversions in 30 days, primary actions with category `PAGE_VIEW`, actions in no
    custom goal and not primary (nothing bids on them), two primary actions that count the same lead.
-4. **Cross-check.** For each lead event: GTM tag → GA4 event count → Ads conversions. A gap of more than about 20%
-   between GA4 and Ads for the same event and period points at different triggers, consent or a broken label.
+4. **Cross-check.** Ads counts only conversions after an ad click, dated to the click; GA4 counts every lead from
+   every source, dated to the event. Compare like with like: `ga4_custom_report` with
+   `dimensions: ["eventName", "sessionSourceMedium"]` (or `sessionGoogleAdsCampaignName`), `metrics: ["eventCount"]`,
+   same window, keeping only the `google / cpc` rows, against Ads conversions for the matching action. Leads that
+   came after a click late in the window can still be landing in Ads (click date vs event date), so expect some
+   lag at the edges. Only on that filtered comparison does a gap of more than about 20% point at different triggers,
+   consent or a broken label; never compare Ads with all GA4 leads.
 5. **Findings table.** One row per finding, worst first:
 
    | Severity | Where | Finding | Evidence | Fix (tool) |
    |---|---|---|---|---|
    | high | GTM | Ads conversion tag fires on All Pages | tag 12 "Ads - Lead" firingTriggerId 2147479553 | pause with `gtm_upsert`; rebuild on a lead trigger with `gtm_build` |
+   | high | GTM | Ads conversion tags but no Conversion Linker | 3 `awct` tags; no `gclidw` tag, no Google tag with an AW- ID | create it with `gtm_upsert` (via `gtm-build`) |
    | medium | GA4 | form_name sent but not registered | GA4 tag 15 maps form_name; not in custom dimensions | `ga4_custom_dimensions` create |
    | low | Ads | "Old Lead" no conversions in 30 days, secondary | 0 all_conversions | leave, or rename with `ads_update_conversion_action` |
 

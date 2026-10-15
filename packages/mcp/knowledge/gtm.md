@@ -20,6 +20,8 @@ Building, publishing and verifying tracking in a GTM web container safely.
 - **Link triggers:** list every link variant per audience (e.g. `wa.me`, `api.whatsapp.com`, a footer link with another number such as `+15550100`). One substring misses the alternates.
 - **Built-ins:** `{{Page Path}}`, `{{Click URL}}` etc. must be enabled (`gtm_builtin_variables`). The `gtm_build` pre-flight names the type to enable.
 - **Pairs:** a GA4 event tag and its Ads conversion tag use the same `triggerIds`, or GA4 and Ads disagree.
+- **Conversion Linker:** any container with Ads conversion tags needs a Conversion Linker (`gclidw` tag on All Pages, trigger `2147479553`, or a Google tag configured with the `AW-` ID). Without it the click ID isn't stored first-party and Safari/ITP conversions go unattributed. Create it with `gtm_upsert` (`type: "gclidw"`).
+- **Conversion value:** map `value`/`currency` on an Ads conversion tag only when the site pushes a real value. A tag-sent `0` overrides the action's default value; omit both to let the default apply.
 - **GA4 parameters:** GA4 event tags don't forward data-layer fields. Map each one in `params`, and register it with `ga4_custom_dimensions` (`action: "create"`, `parameterName`, `displayName`) to report on it. Not retroactive: register before launch.
 - **Cleanup:** pause junk (conversions on page views, events sent to the wrong hostname, duplicates) with `gtm_upsert` `paused: true` rather than delete. `gtm_delete` refuses anything still referenced.
 - **Naming:** `DLV - <key>`, `CE - <event> - <audience>`, `Link - <channel> - <audience>`, `GA4 Event - <event>`, `Ads - <Audience> Lead - <channel>`.

@@ -33,6 +33,10 @@ later steps need them.
 0. **Baseline.** `gtm_overview`: if the workspace already has unpublished changes nobody can explain, stop and ask;
    publishing would ship them too. Note the live version ID as the rollback target. `gtm_list` with
    `entity: "tags"`, `"triggers"` and `"variables"` so nothing is built twice (pre-flight also blocks duplicate names).
+   Check for a Conversion Linker: a `gclidw` tag on All Pages (or a Google tag configured with the `AW-` ID). Without
+   it the click ID isn't stored first-party and Safari/ITP conversions go unattributed. If Ads conversion tags exist
+   or will be built and there is none, create it with `gtm_upsert`: `entity: "tags"`,
+   `resource: { name: "Conversion Linker", type: "gclidw", firingTriggerId: ["2147479553"] }`.
 1. **Prerequisites.**
    1. `gtm_builtin_variables` with `action: "list"`, then `action: "enable"` with the missing `types` (for example
       `["pagePath", "clickUrl"]`). Conditions on `Page Path` and every link click trigger need them.
@@ -43,7 +47,8 @@ later steps need them.
       `conversionLabel` for step 5. Reuse existing actions where the plan says so (labels from
       `run_gaql_query`: `SELECT conversion_action.id, conversion_action.name, conversion_action.tag_snippets FROM conversion_action`).
 2. **Data-layer variables.** `gtm_build` with `recipe: { kind: "datalayer_variable", name: "DLV - form_name", key: "form_name" }`,
-   one per key the tags send (form_name, lead_type, product, page_language, value, currency, event_id).
+   one per key the tags send (form_name, lead_type, product, page_language, event_id; value and currency only when
+   the site sends a real value).
 3. **Triggers.** Note each `triggerId`.
    - Data-layer events: `recipe: { kind: "custom_event_trigger", name: "CE - generate_lead - Business", event: "generate_lead", conditions: [{ variable: "Page Path", op: "matchRegex", value: "^/business/" }] }`.
    - Link clicks: `recipe: { kind: "link_click_trigger", name: "Link - WhatsApp - Business", match: "whatsapp", conditions: [...] }`;
@@ -52,8 +57,11 @@ later steps need them.
      regexes drift apart and leave pages counted twice or never.
 4. **GA4 event tags.** `recipe: { kind: "ga4_event_tag", name: "GA4 Event - generate_lead", eventName: "generate_lead", measurementId: "G-TEST123", params: { form_name: "{{DLV - form_name}}", lead_type: "{{DLV - lead_type}}", … }, triggerIds: [...] }`.
    Map **every** parameter the plan reports on: GA4 event tags don't forward data-layer fields.
-5. **Ads conversion tags.** `recipe: { kind: "ads_conversion_tag", name: "Ads - Business Lead - Form", conversionId: "<digits after AW->", conversionLabel: "<label>", value: "{{DLV - value}}", currency: "USD", triggerIds: [...] }`,
-   with **the same `triggerIds`** as the matching GA4 tag, or GA4 and Ads will disagree.
+5. **Ads conversion tags.** `recipe: { kind: "ads_conversion_tag", name: "Ads - Business Lead - Form", conversionId: "<digits after AW->", conversionLabel: "<label>", triggerIds: [...] }`,
+   with **the same `triggerIds`** as the matching GA4 tag, or GA4 and Ads will disagree. Add
+   `value: "{{DLV - value}}"` and `currency: "{{DLV - currency}}"` only when the site pushes a real value (per the
+   plan's data-layer contract); otherwise omit both so the conversion action's default value applies. A tag-sent `0`
+   overrides that default and records every conversion as worthless.
 6. **Consent.** Add `consent: { required: [...] }` to the recipes in steps 4–5 per the plan (or rebuild an existing
    tag with `gtm_build` and its `id`, passing the full recipe). Tags outside the recipes go through `gtm_upsert`
    (`consentSettings`); see the `consent-audit` skill.
