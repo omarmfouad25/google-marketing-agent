@@ -3,67 +3,10 @@
 // still dry runs unless confirm=true, and applied ones go to the account's change log.
 
 import { z } from "zod";
-import { google } from "googleapis";
-import { requireField, type Ctx } from "../core/context.js";
 import { assertWritable } from "../core/runner.js";
-import { appendChange } from "../core/changelog.js";
 import { text, type Tool } from "../core/tool.js";
-import { formatError } from "../core/errors.js";
-
-const Entity = z.enum(["tags", "triggers", "variables"]);
-type Entity = z.infer<typeof Entity>;
-
-const Container = z.string().optional().describe("Container public ID (GTM-XXXXXXX). Defaults to the profile's gtmContainerId");
-const Workspace = z
-  .string()
-  .optional()
-  .describe("Workspace ID. Defaults to the first workspace (usually 'Default Workspace')");
-const Confirm = z.boolean().optional().describe("false/omitted = preview only. true = apply");
-
-// keyed by public ID: the same container ID resolves to the same path for every account
-const containerPaths = new Map<string, string>();
-
-const gtm = (ctx: Ctx) => google.tagmanager({ version: "v2", auth: ctx.trackingAuth() as any });
-/** Log a change that is already live; if logging fails, say so instead of reporting an error. */
-function logged(ctx: Ctx, entry: Parameters<typeof appendChange>[1], applied: unknown) {
-  try {
-    appendChange(ctx.alias, entry);
-  } catch (err) {
-    return text(`APPLIED but NOT LOGGED (${formatError(err)})\n\n${JSON.stringify(applied, null, 2)}\n\nThis change can't be rolled back from the change log.`);
-  }
-  return json(applied);
-}
-const json = (v: unknown) => text(typeof v === "string" ? v : JSON.stringify(v, null, 2));
-
-async function containerPath(ctx: Ctx, publicId?: string): Promise<string> {
-  const id = publicId ?? requireField(ctx, "gtmContainerId");
-  const cached = containerPaths.get(id);
-  if (cached) return cached;
-  const { data } = await gtm(ctx).accounts.list();
-  for (const account of data.account ?? []) {
-    const res = await gtm(ctx).accounts.containers.list({ parent: account.path! });
-    for (const c of res.data.container ?? []) containerPaths.set(c.publicId!, c.path!);
-  }
-  const path = containerPaths.get(id);
-  if (!path) throw new Error(`Container ${id} not visible to this Google account`);
-  return path;
-}
-
-async function workspacePath(ctx: Ctx, publicId?: string, workspaceId?: string): Promise<string> {
-  const parent = await containerPath(ctx, publicId);
-  if (workspaceId) return `${parent}/workspaces/${workspaceId}`;
-  const { data } = await gtm(ctx).accounts.containers.workspaces.list({ parent });
-  const ws = data.workspace?.[0];
-  if (!ws) throw new Error("No workspace found");
-  return ws.path!;
-}
-
-function entityApi(ctx: Ctx, entity: Entity) {
-  const ws = gtm(ctx).accounts.containers.workspaces;
-  return { tags: ws.tags, triggers: ws.triggers, variables: ws.variables }[entity];
-}
-
-const idField = { tags: "tagId", triggers: "triggerId", variables: "variableId" } as const;
+import { Confirm, Container, Entity, Workspace, containerPath, diff, entityApi, gtm, idField, json, logged, workspacePath } from "./shared.js";
+import { registerGtmBuild } from "./build.js";
 
 function summarize(entity: Entity, items: Record<string, any>[]) {
   return items.map((i) => ({
@@ -74,15 +17,6 @@ function summarize(entity: Entity, items: Record<string, any>[]) {
       ? { firingTriggerId: i.firingTriggerId, blockingTriggerId: i.blockingTriggerId, paused: i.paused ?? false }
       : {}),
   }));
-}
-
-/** Top-level keys whose values differ */
-function diff(before: Record<string, unknown>, after: Record<string, unknown>) {
-  const out: Record<string, { before: unknown; after: unknown }> = {};
-  for (const k of new Set([...Object.keys(before), ...Object.keys(after)])) {
-    if (JSON.stringify(before[k]) !== JSON.stringify(after[k])) out[k] = { before: before[k], after: after[k] };
-  }
-  return out;
 }
 
 export function registerGtmTools(tool: Tool, { writes }: { writes: boolean }) {
@@ -155,6 +89,7 @@ export function registerGtmTools(tool: Tool, { writes }: { writes: boolean }) {
   );
 
   if (!writes) return;
+  registerGtmBuild(tool);
 
   tool(
     "gtm_upsert",
