@@ -21,7 +21,7 @@ describe("tracking tools", () => {
     const off = fakeServer();
     registerGtmTools(defineTool(off as any, store), { writes: false });
     registerGa4AdminTools(defineTool(off as any, store), { writes: false });
-    expect(Object.keys(off.tools).sort()).toEqual(["ga4_list_key_events", "gtm_builtin_variables", "gtm_get", "gtm_list", "gtm_list_containers", "gtm_live_check", "gtm_overview", "gtm_versions"]);
+    expect(Object.keys(off.tools).sort()).toEqual(["ga4_custom_dimensions", "ga4_list_key_events", "gtm_builtin_variables", "gtm_get", "gtm_list", "gtm_list_containers", "gtm_live_check", "gtm_overview", "gtm_versions"]);
   });
 
   it("explain a missing container instead of using a default", async () => {
