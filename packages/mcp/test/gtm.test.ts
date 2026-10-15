@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,6 +6,7 @@ import { google } from "googleapis";
 import { AccountStore } from "../src/core/context.js";
 import { defineTool } from "../src/core/tool.js";
 import { registerGtmTools } from "../src/gtm/tools.js";
+import { compareEntities, expectedStrings } from "../src/gtm/versions.js";
 import { listChanges } from "../src/core/changelog.js";
 import { fakeGtm, fakeServer, WS } from "./fakes.js";
 
@@ -83,5 +84,68 @@ describe("gtm_build", () => {
   it("is not registered on a read-only profile", () => {
     setup({}, false);
     expect(server.tools.gtm_build).toBeUndefined();
+  });
+});
+
+const p = (key: string, value: string) => ({ type: "template", key, value });
+
+describe("gtm_versions", () => {
+  it("lists versions newest first and marks the live one", async () => {
+    setup({ headers: [{ containerVersionId: "6", name: "v6", numTags: "3" }, { containerVersionId: "7", name: "v7", numTags: "5" }], live: { containerVersionId: "7" } });
+    const r = JSON.parse(await run("gtm_versions", {}));
+    expect(r.map((v: any) => [v.versionId, v.live])).toEqual([["7", true], ["6", false]]);
+  });
+
+  it("diffs two versions by name, ignoring volatile fields", () => {
+    const older = { tag: [{ tagId: "1", name: "A", type: "awct", fingerprint: "x", parameter: [p("conversionLabel", "old")] }, { tagId: "2", name: "Gone", type: "html" }] };
+    const newer = { tag: [{ tagId: "1", name: "A", type: "awct", fingerprint: "y", parameter: [p("conversionLabel", "new")] }, { tagId: "3", name: "New", type: "gaawe" }] };
+    const d = compareEntities(older, newer);
+    expect(d.tags.added).toEqual(["New"]);
+    expect(d.tags.removed).toEqual(["Gone"]);
+    expect(d.tags.changed.map((c) => [c.name, Object.keys(c.changes)])).toEqual([["A", ["parameter"]]]);
+    expect(d.triggers).toEqual({ added: [], removed: [], changed: [] });
+  });
+
+  it('compares the workspace to live with versionId "workspace"', async () => {
+    setup({ tags: [{ tagId: "9", name: "New tag", type: "gaawe" }], live: { containerVersionId: "7", tag: [] } });
+    const r = JSON.parse(await run("gtm_versions", { versionId: "workspace" }));
+    expect(r).toMatchObject({ from: "7 (live)", to: "workspace", tags: { added: ["New tag"] } });
+  });
+
+  it("defaults compareTo to the previous version", async () => {
+    setup({ headers: [{ containerVersionId: "5" }, { containerVersionId: "7" }], versions: { "5": { tag: [] }, "7": { tag: [{ name: "T" }] } } });
+    const r = JSON.parse(await run("gtm_versions", { versionId: "7" }));
+    expect(r).toMatchObject({ from: "5", to: "7", tags: { added: ["T"] } });
+  });
+});
+
+describe("gtm_live_check", () => {
+  const live = { containerVersionId: "7", tag: [
+    { name: "Ads", type: "awct", parameter: [p("conversionId", "123456789"), p("conversionLabel", "AbC-1")] },
+    { name: "GA4", type: "gaawe", parameter: [p("eventName", "generate_lead"), p("measurementIdOverride", "G-TEST123")] },
+    { name: "Var label", type: "awct", parameter: [p("conversionLabel", "{{DLV - label}}")] },
+    { name: "Paused", type: "awct", paused: true, parameter: [p("conversionLabel", "Old-1")] },
+  ] };
+
+  it("derives expectations from active tags, skipping variables and paused tags", () => {
+    expect(expectedStrings(live)).toEqual(["AbC-1", "G-TEST123", "generate_lead"]);
+  });
+
+  it("reports found and missing strings in the served gtm.js", async () => {
+    setup({ live });
+    const fetchMock = vi.fn(async () => new Response('..."AbC-1"..."generate_lead"...', { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const r = JSON.parse(await run("gtm_live_check", {}));
+    vi.unstubAllGlobals();
+    expect(fetchMock.mock.calls[0][0]).toBe("https://www.googletagmanager.com/gtm.js?id=GTM-TEST");
+    expect(r).toMatchObject({ container: "GTM-TEST", liveVersion: "7", found: ["AbC-1", "generate_lead"], missing: ["G-TEST123"] });
+  });
+
+  it("explains a non-200 response", async () => {
+    setup({ live });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 404 })));
+    const r = await run("gtm_live_check", { expect: ["x"] });
+    vi.unstubAllGlobals();
+    expect(r).toMatch(/gtm\.js returned 404/);
   });
 });

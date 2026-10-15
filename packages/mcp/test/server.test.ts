@@ -13,7 +13,7 @@ describe("registerAll", () => {
   it("registers only read tools (incl. changes_list) when every profile is read-only", () => {
     const s = fakeServer();
     registerAll(s, storeWith(false));
-    expect(Object.keys(s.tools)).toHaveLength(33);
+    expect(Object.keys(s.tools)).toHaveLength(35);
     expect(s.tools.changes_list).toBeDefined();
     expect(s.tools.ads_set_status).toBeUndefined();
     expect(s.tools.ads_rollback).toBeUndefined();
@@ -24,7 +24,7 @@ describe("registerAll", () => {
   it("registers all tools when a profile is writable", () => {
     const s = fakeServer();
     registerAll(s, storeWith(true));
-    expect(Object.keys(s.tools)).toHaveLength(57);
+    expect(Object.keys(s.tools)).toHaveLength(59);
     expect(s.tools.ads_rollback).toBeDefined();
   });
 

@@ -7,6 +7,7 @@ import { assertWritable } from "../core/runner.js";
 import { text, type Tool } from "../core/tool.js";
 import { Confirm, Container, Entity, Workspace, containerPath, diff, entityApi, gtm, idField, json, logged, workspacePath } from "./shared.js";
 import { registerGtmBuild } from "./build.js";
+import { registerGtmVersions } from "./versions.js";
 
 function summarize(entity: Entity, items: Record<string, any>[]) {
   return items.map((i) => ({
@@ -87,6 +88,8 @@ export function registerGtmTools(tool: Tool, { writes }: { writes: boolean }) {
       return json(data);
     }
   );
+
+  registerGtmVersions(tool);
 
   if (!writes) return;
   registerGtmBuild(tool);
