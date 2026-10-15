@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { listTopics, getTopic } from "../src/core/guide.js";
 
 describe("guide", () => {
-  it("ships the six topics", () => {
-    expect(listTopics()).toEqual(["access", "benchmarks", "demand-gen", "gotchas", "measurement", "policy"]);
+  it("ships the seven topics", () => {
+    expect(listTopics()).toEqual(["access", "benchmarks", "demand-gen", "gotchas", "gtm", "measurement", "policy"]);
   });
 
   it("returns a topic and rejects unknown ones with the list", () => {
