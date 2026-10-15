@@ -90,16 +90,17 @@ For the tracking workflow these tools serve, see [tracking.md](tracking.md).
 
 Creates an enabled website (`WEBPAGE`) conversion action. Refused if an action with the same name exists. Once
 applied, it prints the `conversionId` and `conversionLabel` for the `ads_conversion_tag` recipe. `ads_rollback`
-removes it.
+removes it. A primary action (the default) starts counting in bidding for every campaign that bids on its goal
+category; pass `primary: false` to stage it as secondary until the tag is verified.
 
 | Param | Required | Notes |
 |---|---|---|
-| `name` | yes | Up to 100 characters, no quotes or backslashes |
+| `name` | yes | Up to 100 characters, no quotes, backslashes, newlines or control characters |
 | `category` | yes | `SUBMIT_LEAD_FORM`, `CONTACT`, `PHONE_CALL_LEAD`, `BOOK_APPOINTMENT`, `REQUEST_QUOTE`, `SIGNUP`, `OUTBOUND_CLICK`, `PURCHASE`, `PAGE_VIEW`, `DEFAULT` |
 | `countingType` | | `ONE_PER_CLICK` (default, right for leads) or `MANY_PER_CLICK` (purchases) |
 | `value` | | Default value per conversion, used when the tag sends none |
 | `currency` | | Three letters; defaults to the profile currency |
-| `primary` | | Default `true` (used for bidding) |
+| `primary` | | Default `true`: counts in bidding for campaigns using its goal category. `false` stages it as secondary |
 | `clickThroughWindowDays` | | 1–90, default 30 |
 
 ```json
@@ -190,7 +191,7 @@ every `{{variable}}` exists or is an enabled built-in, and every trigger ID exis
 | Param | Required | Notes |
 |---|---|---|
 | `recipe` | yes | `{ kind, name, … }` |
-| `id` | | Update this existing entity instead of creating; it must be the type the recipe builds |
+| `id` | | Update this existing entity instead of creating; it must be the type the recipe builds. An update replaces the entity's parameters, triggers and consent with the recipe's: settings the recipe doesn't model are removed (the preview lists them as `removedSettings`). For partial edits, such as consent only, use `gtm_upsert` |
 | `confirm` | | Apply; omitted = preview |
 
 ```json
@@ -202,7 +203,7 @@ every `{{variable}}` exists or is an enabled built-in, and every trigger ID exis
 
 | Param | Required | Notes |
 |---|---|---|
-| `versionId` | | Omitted: list versions (newest first, live marked). A number: diff it against the previous version. `"workspace"`: diff unpublished changes against live |
+| `versionId` | | Omitted: list versions (newest first, live marked). A number: diff it against the previous version. `"workspace"`: diff unpublished changes against live (against nothing if the container was never published) |
 | `compareTo` | | Older version to compare against instead |
 
 ```json

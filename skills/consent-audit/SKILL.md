@@ -59,9 +59,11 @@ Call `account_profile` first. Consent rules: `guide("measurement")`; tag recipes
    - Vendor pixels hard-coded in the site move into Tag Manager so they inherit the consent gate.
    - The banner's choice reaches Tag Manager as a consent update (check in Tag Assistant's Consent tab).
 5. **Fixes**, each a preview first and applied only after a yes:
-   - Recipe tags (`gaawe`, `awct` built by recipe): `gtm_build` with the tag's `id` and the full recipe (copy name,
-     IDs, `params` and `triggerIds` from `gtm_get`), adding `consent: { required: ["ad_storage", "ad_user_data"] }`.
-   - Any other tag: `gtm_upsert` with `entity: "tags"`, `id`, and
+   - Consent on an existing tag, recipe-built or not: always `gtm_upsert` with `entity: "tags"`, `id`, and only
+     `consentSettings` in `resource` (the shallow merge keeps its parameters and triggers). Never `gtm_build` with an
+     `id` for a consent change: an update replaces every setting the recipe doesn't model.
+   - Types per tag: GA4 event tags (`gaawe`) need `analytics_storage`; Ads conversion tags (`awct`) need
+     `ad_storage` and `ad_user_data`, plus `ad_personalization` when they feed remarketing. For an Ads tag:
      `resource: { consentSettings: { consentStatus: "needed", consentType: { type: "list", list: [{ type: "template", value: "ad_storage" }, { type: "template", value: "ad_user_data" }] } } }`.
    - A missing consent default: install the CMP's Tag Manager template on Consent Initialization (community
      templates are added in the Tag Manager interface), then configure it with `gtm_upsert`.

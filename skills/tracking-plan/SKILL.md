@@ -59,7 +59,8 @@ Call `account_profile` first (container, property, currency, writes). Use `guide
    - `event_id` is generated once in the browser per lead and reused for any server-side copy (dedup).
    - If GA4 loads through Tag Manager, the site pushes to `dataLayer` and never calls `gtag()` helpers: they do
      nothing in that setup.
-   - Single-page apps also push a page view on every route change.
+   - Single-page apps also push a page view on every route change, unless GA4 enhanced measurement's history-change
+     page views are on (then they'd double count).
 
    ```js
    window.dataLayer = window.dataLayer || [];

@@ -63,11 +63,11 @@ Read everything first (steps 1–4), propose the target (step 5), then fix with 
       lead type, product and page language. If GA4 is loaded through Tag Manager, site code must push to the data
       layer; calling `gtag()` helpers from the site silently does nothing.
    2. **Tag Manager:**
-      - Before a `gtm_upsert` create preview, use `gtm_get` on a similar existing tag to copy its exact parameter keys
-        (the create preview isn't validated by Google).
       - Hand the data layer variables, the custom-event triggers split by page path, the GA4 event tags (each
         parameter mapped) and the Ads conversion tags to the `gtm-build` skill, which builds them as recipes with
         `gtm_build`.
+      - For what stays a raw `gtm_upsert` (a Conversion Linker, consent settings), use `gtm_get` on a similar
+        existing tag first to copy its exact parameter keys (an upsert create preview isn't validated by Google).
       - Pause junk tags.
       - `gtm_publish` only after showing the full list of pending changes. Rollback = re-publish the previous
         `versionId`.

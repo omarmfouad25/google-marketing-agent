@@ -69,7 +69,7 @@ state** of what was changed.
 - Things that were **created** are removed (Google keeps their history). Image assets and Demand Gen custom segments are listed as not reverted: assets are unused once their ad is removed, and segments can be removed in the UI or reused.
 - Rollback restores the logged values, so it overwrites any edits made after that change. It refuses Tag Manager and GA4 entries, entries whose prior-state snapshot failed, entries already rolled back, and rollbacks of a rollback.
 - Writes fail closed: if the prior-state snapshot can't be taken, or the current budget is unknown for the budget guardrail, the change is refused rather than applied unlogged.
-- The `container` parameter of `gtm_upsert` and `gtm_publish` can target any Tag Manager container the login can see, not only the one in the profile.
+- The `container` parameter of `gtm_upsert`, `gtm_build`, `gtm_delete`, `gtm_builtin_variables` and `gtm_publish` can target any Tag Manager container the login can see, not only the one in the profile.
 
 ## Tag Manager and GA4 writes
 

@@ -44,7 +44,7 @@ Plan what to track, build it in Tag Manager from typed recipes, publish after yo
 visitors actually get. Every tag, trigger and variable is previewed first; the previous live version is the rollback.
 
 ```text
-You:    Track form leads and WhatsApp clicks on acme.com, split business and consumer.
+You:    Track form leads and WhatsApp clicks on example.com, split business and consumer.
 Agent:  Plan: generate_lead and contact_click, split by /business/ vs /consumer/, 4 Ads actions, 2 goals,
         plus the dataLayer code for your developers. Build it?
 You:    Yes.
@@ -57,7 +57,7 @@ Agent:  Version 13 is live (rollback: version 12). Live check ✓ every label an
 
 | Ask | Skill | You get |
 |---|---|---|
-| "Plan lead tracking for acme.com" | `tracking-plan` | Event matrix, data-layer code for developers, custom dimensions, Ads actions and goals, consent, build order |
+| "Plan lead tracking for example.com" | `tracking-plan` | Event matrix, data-layer code for developers, custom dimensions, Ads actions and goals, consent, build order |
 | "Build the tracking plan" · "Add WhatsApp click tracking" | `gtm-build` | Variables, triggers and tags built and previewed one by one, published on your yes, checked live |
 | "Ads shows 0 conversions but we got leads" | `tracking-audit` | Tag Manager → GA4 → Google Ads checked end to end, fixes handed to `gtm-build` |
 | "Are we double counting?" · "Audit our events" | `event-audit` | Duplicates, dead tags, unregistered parameters and unused actions, with a fix list |

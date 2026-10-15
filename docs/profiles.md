@@ -22,7 +22,7 @@ the directory holds `credentials.json` and `changes/` too, and it is set to `070
       "geos": ["2840"],
       "languages": ["en"],
       "ga4PropertyId": "123456789",
-      "gscSiteUrl": "sc-domain:acme.com",
+      "gscSiteUrl": "sc-domain:example.com",
       "gtmContainerId": "GTM-XXXXXXX",
       "writes": true,
       "guardrails": { "maxBudgetChangePct": 50 },

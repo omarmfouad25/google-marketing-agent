@@ -34,11 +34,14 @@ for counting and freshness. Everything here is read-only.
      the `AW-` ID): Safari/ITP conversions go unattributed;
    - Ads conversion tags sending a constant `0` value (it overrides the action's default value);
    - duplicates: two tags with the same event name, conversion label or measurement ID on the same trigger;
-   - conversions on page views (All Pages, Page View or DOM Ready triggers on an Ads conversion tag);
+   - conversions on page views: an Ads conversion tag on All Pages, or on a Page View / DOM Ready trigger limited to
+     a confirmation path (a fragile success signal);
    - text or element-visibility triggers (fragile: they break silently when copy or language changes);
    - GA4/Ads pairs for the same event with different trigger lists;
    - variables referenced as `{{Name}}` that exist neither in the variables list nor in the enabled built-ins;
-   - Ads and vendor tags with consent `notSet` where the site serves consent regions (details: `consent-audit`).
+   - consent `notSet` where the site serves consent regions: fine on Google tags in advanced Consent Mode when a
+     consent default exists (they read it themselves); a finding when there is no consent default, or on vendor
+     (non-Google) tags (details: `consent-audit`).
 2. **GA4.** `ga4_list_key_events`, `ga4_custom_dimensions` with `action: "list"`, then `ga4_custom_report` with
    `dimensions: ["eventName"]`, `metrics: ["eventCount"]`, for the 30 days ending 3 days ago (`dateFrom` 32 days ago, `dateTo` 3 days ago; the last 2
    days are still processing). Check:
@@ -71,9 +74,10 @@ for counting and freshness. Everything here is read-only.
    | medium | GA4 | form_name sent but not registered | GA4 tag 15 maps form_name; not in custom dimensions | `ga4_custom_dimensions` create |
    | low | Ads | "Old Lead" no conversions in 30 days, secondary | 0 all_conversions | leave, or rename with `ads_update_conversion_action` |
 
-   - **high**: inflates or loses conversions that bidding uses (double counting, conversions on page views, broken
-     primary action, ungated ad pixels in consent regions).
-   - **medium**: reporting is wrong or fragile (unregistered parameters, text triggers, mismatched pairs).
+   - **high**: inflates or loses conversions that bidding uses (double counting, conversions on All Pages, broken
+     primary action, ungated vendor pixels in consent regions, `notSet` Google tags with no consent default).
+   - **medium**: reporting is wrong or fragile (unregistered parameters, text triggers, mismatched pairs, conversions
+     on a page-view trigger limited to a confirmation path).
    - **low**: clutter (dead tags, unused key events, near-duplicate names with no traffic).
 6. **Fix list.** Group the fixes for the `gtm-build` skill (GTM changes, custom dimensions, key events) and Google Ads
    (`ads_set_conversion_primary`, `ads_update_conversion_action`, `ads_create_custom_goal`,

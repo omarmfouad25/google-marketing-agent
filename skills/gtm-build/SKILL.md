@@ -62,9 +62,10 @@ later steps need them.
    `value: "{{DLV - value}}"` and `currency: "{{DLV - currency}}"` only when the site pushes a real value (per the
    plan's data-layer contract); otherwise omit both so the conversion action's default value applies. A tag-sent `0`
    overrides that default and records every conversion as worthless.
-6. **Consent.** Add `consent: { required: [...] }` to the recipes in steps 4–5 per the plan (or rebuild an existing
-   tag with `gtm_build` and its `id`, passing the full recipe). Tags outside the recipes go through `gtm_upsert`
-   (`consentSettings`); see the `consent-audit` skill.
+6. **Consent.** Add `consent: { required: [...] }` to the recipes in steps 4–5 per the plan when creating them.
+   Consent on an existing tag always goes through `gtm_upsert` with `resource: { consentSettings: … }` (the shallow
+   merge keeps its parameters); never `gtm_build` with an `id` for consent, since an update removes every setting
+   the recipe doesn't model. Types per tag: see the `consent-audit` skill.
 7. **When `gtm_build` returns "NOT BUILT (nothing changed)".** Fix each listed prerequisite (enable the built-in it
    names, create the missing variable, use a real trigger ID, rename the duplicate) and retry the same recipe. Never
    fall back to `gtm_upsert` to get around a pre-flight finding.

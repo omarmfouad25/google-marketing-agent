@@ -143,7 +143,7 @@ already broken and `consent-audit` for consent. Walkthrough with examples: [trac
 
 ### `tracking-plan`
 
-**Say:** "Set up tracking", "What should we track?", "Tracking plan for acme.com", "We're launching a new site"
+**Say:** "Set up tracking", "What should we track?", "Tracking plan for example.com", "We're launching a new site"
 
 1. One interview: what a lead is worth, lead types, how pages separate audiences (`/business/` vs `/consumer/`),
    contact channels (forms, messaging and `tel:` links, booking widgets), consent regions, who implements the site.

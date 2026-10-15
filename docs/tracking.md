@@ -40,7 +40,7 @@ contact form and WhatsApp links.
 ### 1. Plan
 
 ```text
-You:    Plan lead tracking for acme.com.
+You:    Plan lead tracking for example.com.
 ```
 
 The `tracking-plan` skill asks its questions once, all together: what a lead is worth, which forms and links bring
@@ -360,7 +360,7 @@ change log (*"What changed on acme this week?"*).
 |---|---|---|
 | `NOT BUILT (nothing changed)` | The pre-flight found a problem: duplicate name, missing variable, unknown trigger ID, or `id` of a different type | Fix each listed line and retry the same recipe. Don't route around it with `gtm_upsert` |
 | `{{Page Path}} is a built-in variable that is not enabled` | Built-ins are off by default in new containers | *"Enable the Page Path and Click URL built-ins"* (`gtm_builtin_variables` `action: "enable"`) |
-| `gtm.js returned 404` | The container was never published, or the ID is wrong | Check `gtmContainerId` in the profile; publish a first version |
+| `has no published version yet` or `gtm.js returned 404` | The container was never published, or the ID is wrong | Check `gtmContainerId` in the profile; publish a first version with `gtm_publish` (its preview shows the rollback as "none (first published version)") |
 | `gtm_live_check` lists something just published as missing | Google's CDN lags a few minutes | Re-run in 5 minutes |
 | A form test doesn't show in GA4 | Headless browser (filtered as a bot, blocked by reCAPTCHA), or the site pushes on submit instead of success | Test in a normal browser; check the push happens after the server confirms |
 | One manual test missing, others fine | An ad blocker or privacy extension dropped the hit | Retry in a clean profile before changing anything |
