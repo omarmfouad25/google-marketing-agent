@@ -41,8 +41,8 @@ Read everything first (steps 1–4), propose the target (step 5), then fix with 
    - Last 30 days per action:
      `SELECT segments.conversion_action_name, metrics.all_conversions FROM customer WHERE segments.date DURING LAST_30_DAYS`.
    - What each campaign bids on: `campaign_conversion_goal` and `conversion_goal_campaign_config` (see `ads-audit`).
-   - No tool creates Ads conversion actions: new ones are created in the Google Ads interface, or imported from GA4 key
-     events via the GA4 link. Get IDs and labels with
+   - New conversion actions are created with `ads_create_conversion_action` (it prints the ID and label for the tag),
+     or imported from GA4 key events via the GA4 link. Get IDs and labels of existing ones with
      `SELECT conversion_action.id, conversion_action.name, conversion_action.tag_snippets FROM conversion_action`.
    - Identify each action by what it really measures (its tag and label in Tag Manager), not its name: automatically
      created actions can carry misleading names that can't be changed through the API.
@@ -57,6 +57,7 @@ Read everything first (steps 1–4), propose the target (step 5), then fix with 
    | Consumer form / contact | consumer path | same events on consumer pages | … | Consumer Lead – … | Consumer Leads |
 
    Page views and micro-events become secondary. Count contact clicks as leads when that's where leads really arrive.
+   For a full plan (data-layer contract, custom dimensions, consent, naming, build order), run the `tracking-plan` skill.
 6. **Fix, in this order.** Each change is a preview first and applied only after a yes.
    1. **Site** (the user's developers): push a data layer event on real success (not on visible text), with form name,
       lead type, product and page language. If GA4 is loaded through Tag Manager, site code must push to the data
@@ -64,8 +65,9 @@ Read everything first (steps 1–4), propose the target (step 5), then fix with 
    2. **Tag Manager:**
       - Before a `gtm_upsert` create preview, use `gtm_get` on a similar existing tag to copy its exact parameter keys
         (the create preview isn't validated by Google).
-      - `gtm_upsert` for the data layer variables, the custom-event triggers split by page path, the Ads conversion
-        tags and the GA4 event tags (each parameter mapped).
+      - Hand the data layer variables, the custom-event triggers split by page path, the GA4 event tags (each
+        parameter mapped) and the Ads conversion tags to the `gtm-build` skill, which builds them as recipes with
+        `gtm_build`.
       - Pause junk tags.
       - `gtm_publish` only after showing the full list of pending changes. Rollback = re-publish the previous
         `versionId`.
