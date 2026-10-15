@@ -239,6 +239,13 @@ describe("ads_create_conversion_action", () => {
     // fakeServer skips zod parsing, so the handler must check this itself (GAQL safety)
     const r = await server.tools.ads_create_conversion_action.handler({ name: "Bob's form", category: "CONTACT" });
     expect(r.content[0].text).toMatch(/can't contain quotes/);
+    const nl = await server.tools.ads_create_conversion_action.handler({ name: "Lead\nform", category: "CONTACT" });
+    expect(nl.content[0].text).toMatch(/control characters/);
     expect(customer.calls).toEqual([]);
+    expect(customer.queries).toEqual([]);
+    const schema = (server.tools.ads_create_conversion_action.shape as any).name;
+    expect(schema.safeParse("Lead\rform").success).toBe(false);
+    expect(schema.safeParse("Tab\there").success).toBe(false);
+    expect(schema.safeParse("Lead – form").success).toBe(true);
   });
 });

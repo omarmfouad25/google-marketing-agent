@@ -45,9 +45,9 @@ export function registerGoals(tool: Tool) {
 
   tool(
     "ads_create_conversion_action",
-    "Create a website (WEBPAGE) conversion action, e.g. a lead form or contact click, and print its conversion ID and label for gtm_build ads_conversion_tag. Counting defaults to ONE_PER_CLICK (right for leads). Dry run unless confirm=true; ads_rollback removes it",
+    "Create a website (WEBPAGE) conversion action, e.g. a lead form or contact click, and print its conversion ID and label for gtm_build ads_conversion_tag. Counting defaults to ONE_PER_CLICK (right for leads). A primary action starts counting in bidding for campaigns using that goal category: primary false to stage it. Dry run unless confirm=true; ads_rollback removes it",
     {
-      name: z.string().min(1).max(100).refine((s) => !/['\\]/.test(s), "no quotes or backslashes"),
+      name: z.string().min(1).max(100).refine((s) => !/['\\]/.test(s), "no quotes or backslashes").refine((s) => !/[\r\n\x00-\x1f]/.test(s), "no newlines or control characters"),
       category: z.enum(["SUBMIT_LEAD_FORM", "CONTACT", "PHONE_CALL_LEAD", "BOOK_APPOINTMENT", "REQUEST_QUOTE", "SIGNUP", "OUTBOUND_CLICK", "PURCHASE", "PAGE_VIEW", "DEFAULT"]),
       countingType: z.enum(["ONE_PER_CLICK", "MANY_PER_CLICK"]).optional().describe("Default ONE_PER_CLICK; MANY_PER_CLICK for purchases"),
       value: z.number().positive().optional().describe("Default value per conversion"),
@@ -60,6 +60,7 @@ export function registerGoals(tool: Tool) {
       const refused = assertWritable(ctx);
       if (refused) return text(refused);
       if (/['\\]/.test(name)) return text("The name can't contain quotes or backslashes.");
+      if (/[\r\n\x00-\x1f]/.test(name)) return text("The name can't contain newlines or control characters.");
       const [dup] = await rows(ctx, `SELECT conversion_action.id, conversion_action.name FROM conversion_action WHERE conversion_action.name = '${name}' AND conversion_action.status != 'REMOVED'`);
       if (dup) return text(`A conversion action named "${name}" already exists (id ${dup.conversion_action.id}). Reuse it, or rename with ads_update_conversion_action.`);
       const counting = countingType ?? "ONE_PER_CLICK";

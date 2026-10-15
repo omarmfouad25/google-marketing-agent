@@ -26,6 +26,7 @@ function setup(init: Parameters<typeof fakeGtm>[0] = {}, writes = true) {
 const run = async (name: string, args: Record<string, unknown>) => (await server.tools[name].handler(args)).content[0].text as string;
 afterEach(() => vi.restoreAllMocks());
 
+const p = (key: string, value: string) => ({ type: "template", key, value });
 const PAGE_PATH = { name: "Page Path", type: "pagePath" };
 const trigger24 = { triggerId: "24", name: "CE - generate_lead - Consumer", type: "customEvent", path: `${WS}/triggers/24` };
 const dlv = { variableId: "18", name: "DLV - form_name", type: "v", path: `${WS}/variables/18` };
@@ -82,13 +83,20 @@ describe("gtm_build", () => {
     expect(gtm.calls[0]).toMatchObject({ method: "tags.update", args: { path: `${WS}/tags/7`, fingerprint: "f0" } });
   });
 
+  it("lists settings an update would remove", async () => {
+    const tag = { tagId: "7", name: "GA4 Event - x", type: "gaawe", parameter: [p("eventName", "x"), p("userProperties", "x")], firingTriggerId: ["24"], fingerprint: "f0", path: `${WS}/tags/7` };
+    setup({ tags: [tag], triggers: [trigger24] });
+    const ga4 = { kind: "ga4_event_tag", name: "GA4 Event - x", eventName: "x", measurementId: "G-TEST123", triggerIds: ["24"] };
+    const preview = await run("gtm_build", { recipe: ga4, id: "7" });
+    expect(preview).toMatch(/WARNING: removes settings the recipe doesn't model: userProperties/);
+    expect(preview).toContain('"removedSettings": [\n    "userProperties"\n  ]');
+  });
+
   it("is not registered on a read-only profile", () => {
     setup({}, false);
     expect(server.tools.gtm_build).toBeUndefined();
   });
 });
-
-const p = (key: string, value: string) => ({ type: "template", key, value });
 
 describe("gtm_versions", () => {
   it("lists versions newest first and marks the live one", async () => {
@@ -117,6 +125,13 @@ describe("gtm_versions", () => {
     setup({ headers: [{ containerVersionId: "5" }, { containerVersionId: "7" }], versions: { "5": { tag: [] }, "7": { tag: [{ name: "T" }] } } });
     const r = JSON.parse(await run("gtm_versions", { versionId: "7" }));
     expect(r).toMatchObject({ from: "5", to: "7", tags: { added: ["T"] } });
+  });
+
+  it("works on a never-published container", async () => {
+    setup({ live: null, headers: [{ containerVersionId: "1" }], tags: [{ tagId: "9", name: "New tag", type: "gaawe" }] });
+    expect(JSON.parse(await run("gtm_versions", {}))).toEqual([expect.objectContaining({ versionId: "1", live: false })]);
+    const r = JSON.parse(await run("gtm_versions", { versionId: "workspace" }));
+    expect(r).toMatchObject({ from: "none (never published)", to: "workspace", tags: { added: ["New tag"] } });
   });
 
   it("skips deleted versions when picking the previous one", async () => {
@@ -148,6 +163,11 @@ describe("gtm_live_check", () => {
     expect(r).toMatchObject({ container: "GTM-TEST", liveVersion: "7", found: ["AbC-1", "generate_lead"], missing: ["G-TEST123"] });
   });
 
+  it("explains a container with no published version", async () => {
+    setup({ live: null });
+    expect(await run("gtm_live_check", {})).toBe("Container GTM-TEST has no published version yet: publish one with gtm_publish first.");
+  });
+
   it("explains a network failure", async () => {
     setup({ live });
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("timeout"); }));
@@ -162,6 +182,30 @@ describe("gtm_live_check", () => {
     const r = await run("gtm_live_check", { expect: ["x"] });
     vi.unstubAllGlobals();
     expect(r).toMatch(/gtm\.js returned 404/);
+  });
+});
+
+describe("gtm_publish", () => {
+  const change = [{ changeStatus: "added", tag: { name: "New tag" } }];
+
+  it("publishes a never-published container, with no rollback version", async () => {
+    setup({ live: null, changes: change });
+    expect(await run("gtm_publish", { name: "v1" })).toMatch(/"liveVersion": "none \(first published version\)"/);
+    const r = JSON.parse(await run("gtm_publish", { name: "v1", confirm: true }));
+    expect(r.rollback).toBe("none (first published version)");
+    expect(gtm.calls.map((c) => c.method)).toEqual(["workspaces.create_version", "versions.publish"]);
+  });
+
+  it("previews a re-publish when nothing is live", async () => {
+    setup({ live: null });
+    expect(JSON.parse(await run("gtm_publish", { versionId: "3" })).preview).toBe("RE-PUBLISH version 3 (live is none (first published version))");
+  });
+});
+
+describe("gtm_overview", () => {
+  it("works on a never-published container", async () => {
+    setup({ live: null });
+    expect(JSON.parse(await run("gtm_overview", {})).live).toBeNull();
   });
 });
 

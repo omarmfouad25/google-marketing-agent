@@ -33,7 +33,8 @@ export function registerGtmBuild(tool: Tool) {
     "gtm_build",
     "Create (no id) or update (id) a GTM tag, trigger or variable from a typed recipe: datalayer_variable, custom_event_trigger, " +
       "link_click_trigger, ga4_event_tag, ads_conversion_tag (conditions, negation and consent included). Checks names, variables and " +
-      "triggers first. Not live until gtm_publish. Preview unless confirm=true. For anything else use gtm_upsert",
+      "triggers first. Update replaces the entity's parameters, triggers and consent with the recipe's: settings the recipe doesn't model " +
+      "are removed (use gtm_upsert for partial edits). Not live until gtm_publish. Preview unless confirm=true. For anything else use gtm_upsert",
     { recipe: Recipe, id: z.string().regex(/^\d+$/).optional().describe("Update this existing entity instead of creating"), container: Container, workspaceId: Workspace, confirm: Confirm },
     async ({ recipe, id, container, workspaceId, confirm }, ctx) => {
       const refused = assertWritable(ctx);
@@ -57,7 +58,12 @@ export function registerGtmBuild(tool: Tool) {
       const after = { ...before, ...c.resource };
       const changes = diff(before, after);
       if (!Object.keys(changes).length) return json("No differences: nothing to update.");
-      if (!confirm) return preview(`UPDATE ${c.entity}/${id} "${before.name}" (nothing changed)`, { changes });
+      if (!confirm) {
+        const kept = new Set(((c.resource.parameter as any[] | undefined) ?? []).map((x) => x.key));
+        const removedSettings = ((before.parameter as any[] | undefined) ?? []).map((x) => x.key).filter((k) => !kept.has(k));
+        const warning = removedSettings.length ? `\nWARNING: removes settings the recipe doesn't model: ${removedSettings.join(", ")} (use gtm_upsert for partial edits)` : "";
+        return preview(`UPDATE ${c.entity}/${id} "${before.name}" (nothing changed)${warning}`, { ...(removedSettings.length ? { removedSettings } : {}), changes });
+      }
       const path = `${ws}/${c.entity}/${id}`;
       const { data } = await api.update({ path, fingerprint: before.fingerprint, requestBody: after });
       return logged(ctx, { product: "gtm", tool: "gtm_build", summary: `update ${c.entity}/${id} "${before.name}" (${recipe.kind})`, action: "update", entity: c.entity, path, before, changes }, { applied: "UPDATED in workspace (not live until gtm_publish)", changes, fingerprint: data.fingerprint });

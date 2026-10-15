@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { Ctx } from "../core/context.js";
 import { requireField } from "../core/context.js";
 import { text, type Tool } from "../core/tool.js";
-import { Container, Workspace, containerPath, diff, gtm, json, listAll, workspacePath } from "./shared.js";
+import { Container, Workspace, containerPath, diff, gtm, json, listAll, liveVersion, workspacePath } from "./shared.js";
 
 type Snapshot = { tag?: any[]; trigger?: any[]; variable?: any[] };
 const VOLATILE = new Set(["fingerprint", "path", "accountId", "containerId", "workspaceId", "containerVersionId", "tagManagerUrl", "tagId", "triggerId", "variableId", "parentFolderId"]);
@@ -63,25 +63,28 @@ export function registerGtmVersions(tool: Tool) {
     async ({ versionId, compareTo, container, workspaceId }, ctx) => {
       const parent = await containerPath(ctx, container);
       const c = gtm(ctx).accounts.containers;
-      const live = (await c.versions.live({ parent })).data;
+      const liveId = (await liveVersion(ctx, parent))?.containerVersionId ?? undefined;
       if (!versionId) {
         const headers = (await c.version_headers.list({ parent })).data.containerVersionHeader ?? [];
         return json(
           headers
             .filter((h) => !h.deleted)
             .sort((a, b) => Number(b.containerVersionId) - Number(a.containerVersionId))
-            .map((h) => ({ versionId: h.containerVersionId, name: h.name, tags: h.numTags, triggers: h.numTriggers, variables: h.numVariables, live: h.containerVersionId === live.containerVersionId }))
+            .map((h) => ({ versionId: h.containerVersionId, name: h.name, tags: h.numTags, triggers: h.numTriggers, variables: h.numVariables, live: h.containerVersionId === liveId }))
         );
       }
       let from = compareTo;
-      if (!from && versionId === "workspace") from = live.containerVersionId!;
+      if (!from && versionId === "workspace") {
+        if (!liveId) return json({ from: "none (never published)", to: versionId, ...compareEntities({}, await snapshot(ctx, parent, versionId, container, workspaceId)) });
+        from = liveId;
+      }
       if (!from) {
         const ids = ((await c.version_headers.list({ parent })).data.containerVersionHeader ?? []).filter((h) => !h.deleted).map((h) => Number(h.containerVersionId)).filter((n) => n < Number(versionId));
         if (!ids.length) return text(`Version ${versionId} has no earlier version to compare with.`);
         from = String(Math.max(...ids));
       }
       const [older, newer] = await Promise.all([snapshot(ctx, parent, from), snapshot(ctx, parent, versionId, container, workspaceId)]);
-      const label = from === live.containerVersionId ? `${from} (live)` : from;
+      const label = from === liveId ? `${from} (live)` : from;
       return json({ from: label, to: versionId, ...compareEntities(older, newer) });
     }
   );
@@ -93,7 +96,8 @@ export function registerGtmVersions(tool: Tool) {
     async ({ expect, container }, ctx) => {
       const publicId = container ?? requireField(ctx, "gtmContainerId");
       const parent = await containerPath(ctx, publicId);
-      const live = (await gtm(ctx).accounts.containers.versions.live({ parent })).data as Snapshot & { containerVersionId?: string };
+      const live = (await liveVersion(ctx, parent)) as (Snapshot & { containerVersionId?: string }) | undefined;
+      if (!live) return text(`Container ${publicId} has no published version yet: publish one with gtm_publish first.`);
       const wanted = expect ?? expectedStrings(live);
       const url = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(publicId)}`;
       let res: Response;

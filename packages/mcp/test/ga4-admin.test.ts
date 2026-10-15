@@ -59,10 +59,19 @@ describe("ga4_custom_dimensions", () => {
 
   it("archives a dimension by name", async () => {
     setup();
-    expect(await run({ action: "archive", name: existing.name })).toMatch(/ARCHIVE custom dimension "Form name"/);
+    const preview = await run({ action: "archive", name: existing.name });
+    expect(preview).toMatch(/ARCHIVE custom dimension "Form name"/);
+    expect(preview).toMatch(/can't be restored/);
+    expect(calls).toEqual([]);
     await run({ action: "archive", name: existing.name, confirm: true });
     expect(calls[0]).toEqual({ method: "archive", args: { name: existing.name } });
     expect(await run({ action: "archive", name: "properties/5/customDimensions/999" })).toMatch(/not found/);
+  });
+
+  it("refuses archive on a read-only profile", async () => {
+    setup(false);
+    expect(await run({ action: "archive", name: existing.name, confirm: true })).toMatch(/^REFUSED/);
+    expect(calls).toEqual([]);
   });
 
   it("validates inputs", async () => {

@@ -48,6 +48,17 @@ export async function containerPath(ctx: Ctx, publicId?: string): Promise<string
   return path;
 }
 
+/** The live version, or undefined when the container was never published (the API answers 404) */
+export async function liveVersion(ctx: Ctx, parent: string) {
+  try {
+    return (await gtm(ctx).accounts.containers.versions.live({ parent })).data;
+  } catch (e: any) {
+    if ([e?.code, e?.status, e?.response?.status].some((v) => Number(v) === 404)) return undefined;
+    throw e;
+  }
+}
+export const NO_LIVE = "none (first published version)";
+
 export async function workspacePath(ctx: Ctx, publicId?: string, workspaceId?: string): Promise<string> {
   const parent = await containerPath(ctx, publicId);
   if (workspaceId) return `${parent}/workspaces/${workspaceId}`;

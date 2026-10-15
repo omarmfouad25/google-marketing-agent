@@ -87,13 +87,18 @@ export function fakeGtm(init: Partial<GtmState> = {}) {
         list: async () => ({ data: { container: [{ publicId: "GTM-TEST", path: "accounts/1/containers/2", name: "Acme site" }] } }),
         version_headers: { list: async () => ({ data: { containerVersionHeader: state.headers } }) },
         versions: {
-          live: async () => ({ data: state.live }),
+          // a never-published container has no live version: the API answers 404
+          live: async () => {
+            if (state.live === null) throw Object.assign(new Error("Not found"), { code: 404 });
+            return { data: state.live };
+          },
           get: async ({ path }: { path: string }) => ({ data: state.versions[path.split("/").pop()!] }),
           publish: async (args: any) => (calls.push({ method: "versions.publish", args }), { data: {} }),
         },
         workspaces: {
           list: async () => ({ data: { workspace: [{ workspaceId: "3", name: "Default Workspace", path: WS }] } }),
           getStatus: async () => ({ data: { workspaceChange: state.changes, mergeConflict: [] } }),
+          create_version: async (args: any) => (calls.push({ method: "workspaces.create_version", args }), { data: { containerVersion: { containerVersionId: "1", path: "accounts/1/containers/2/versions/1" } } }),
           tags: entity("tags"),
           triggers: entity("triggers"),
           variables: entity("variables"),

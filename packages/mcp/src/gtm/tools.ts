@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { assertWritable } from "../core/runner.js";
 import { text, type Tool } from "../core/tool.js";
-import { Confirm, Container, Entity, Workspace, containerPath, diff, entityApi, gtm, idField, json, logged, workspacePath } from "./shared.js";
+import { Confirm, Container, Entity, NO_LIVE, Workspace, containerPath, diff, entityApi, gtm, idField, json, liveVersion, logged, workspacePath } from "./shared.js";
 import { registerGtmBuild } from "./build.js";
 import { registerGtmBuiltins, registerGtmDelete } from "./manage.js";
 import { registerGtmVersions } from "./versions.js";
@@ -42,19 +42,15 @@ export function registerGtmTools(tool: Tool, { writes }: { writes: boolean }) {
       const parent = await containerPath(ctx, container);
       const c = gtm(ctx).accounts.containers;
       const [live, workspaces, ws] = await Promise.all([
-        c.versions.live({ parent }),
+        liveVersion(ctx, parent),
         c.workspaces.list({ parent }),
         workspacePath(ctx, container, workspaceId),
       ]);
       const status = await c.workspaces.getStatus({ path: ws });
       return json({
-        live: {
-          versionId: live.data.containerVersionId,
-          name: live.data.name,
-          tags: live.data.tag?.length ?? 0,
-          triggers: live.data.trigger?.length ?? 0,
-          variables: live.data.variable?.length ?? 0,
-        },
+        live: live
+          ? { versionId: live.containerVersionId, name: live.name, tags: live.tag?.length ?? 0, triggers: live.trigger?.length ?? 0, variables: live.variable?.length ?? 0 }
+          : null,
         workspaces: workspaces.data.workspace?.map((w) => ({ id: w.workspaceId, name: w.name })),
         pendingChanges: status.data.workspaceChange?.map((ch) => ({
           change: ch.changeStatus,
@@ -145,13 +141,14 @@ export function registerGtmTools(tool: Tool, { writes }: { writes: boolean }) {
       if (refused) return text(refused);
       const parent = await containerPath(ctx, container);
       const c = gtm(ctx).accounts.containers;
-      const live = (await c.versions.live({ parent })).data;
+      const liveId = (await liveVersion(ctx, parent))?.containerVersionId ?? undefined;
+      const liveLabel = liveId ?? NO_LIVE;
 
       if (versionId) {
         const path = `${parent}/versions/${versionId}`;
-        if (!confirm) return json({ preview: `RE-PUBLISH version ${versionId} (live is ${live.containerVersionId})` });
+        if (!confirm) return json({ preview: `RE-PUBLISH version ${versionId} (live is ${liveLabel})` });
         await c.versions.publish({ path });
-        return logged(ctx, { product: "gtm", tool: "gtm_publish", summary: `republish version ${versionId}`, action: "republish", versionId, previousLive: live.containerVersionId }, { applied: `Version ${versionId} is now live`, previousLive: live.containerVersionId });
+        return logged(ctx, { product: "gtm", tool: "gtm_publish", summary: `republish version ${versionId}`, action: "republish", versionId, previousLive: liveId }, { applied: `Version ${versionId} is now live`, previousLive: liveLabel });
       }
 
       const ws = await workspacePath(ctx, container, workspaceId);
@@ -164,7 +161,7 @@ export function registerGtmTools(tool: Tool, { writes }: { writes: boolean }) {
       if (!changes?.length) return json("Workspace has no pending changes: nothing to publish.");
       if (status.mergeConflict?.length) return json("BLOCKED: workspace has merge conflicts. Resolve in the GTM UI.");
       if (!name) return json("Provide a version name.");
-      if (!confirm) return json({ preview: `PUBLISH "${name}" (nothing changed)`, liveVersion: live.containerVersionId, changes });
+      if (!confirm) return json({ preview: `PUBLISH "${name}" (nothing changed)`, liveVersion: liveLabel, changes });
 
       const created = (await c.workspaces.create_version({ path: ws, requestBody: { name, notes } })).data;
       if (created.compilerError || !created.containerVersion?.path) {
@@ -172,9 +169,9 @@ export function registerGtmTools(tool: Tool, { writes }: { writes: boolean }) {
       }
       await c.versions.publish({ path: created.containerVersion.path });
       const newId = created.containerVersion.containerVersionId;
-      return logged(ctx, { product: "gtm", tool: "gtm_publish", summary: `publish version ${newId} "${name}"`, action: "publish", name, newVersion: newId, previousLive: live.containerVersionId, changes }, {
+      return logged(ctx, { product: "gtm", tool: "gtm_publish", summary: `publish version ${newId} "${name}"`, action: "publish", name, newVersion: newId, previousLive: liveId, changes }, {
         applied: `Version ${newId} "${name}" is live`,
-        rollback: `gtm_publish versionId=${live.containerVersionId}`,
+        rollback: liveId ? `gtm_publish versionId=${liveId}` : NO_LIVE,
         changes,
       });
     }

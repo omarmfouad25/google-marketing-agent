@@ -58,7 +58,7 @@ export function registerGtmBuiltins(tool: Tool) {
 export function registerGtmDelete(tool: Tool) {
   tool(
     "gtm_delete",
-    "Delete one tag, trigger or variable from the workspace. Refused while anything references it. Prefer pausing a tag (gtm_upsert paused: true) when you may want it back. Not live until gtm_publish. Preview unless confirm=true",
+    "Delete one tag, trigger or variable from the workspace. Refused while anything references it. Prefer pausing a tag (gtm_upsert with resource: { paused: true }) when you may want it back. Not live until gtm_publish. Preview unless confirm=true",
     { entity: Entity, id: z.string().regex(/^\d+$/), container: Container, workspaceId: Workspace, confirm: Confirm },
     async ({ entity, id, container, workspaceId, confirm }, ctx) => {
       const refused = assertWritable(ctx);
@@ -71,7 +71,7 @@ export function registerGtmDelete(tool: Tool) {
       if (refs.length) return text(`REFUSED (nothing changed): ${entity}/${id} "${before.name}" is used by ${refs.join(", ")}. Change those first.`);
       if (!confirm) {
         return preview(`DELETE ${entity}/${id} "${before.name}" (nothing changed)`, {
-          note: entity === "tags" ? "Consider pausing instead (gtm_upsert with paused: true): it keeps the tag for later." : undefined,
+          note: entity === "tags" ? "Consider pausing instead (gtm_upsert with resource: { paused: true }): it keeps the tag for later." : undefined,
           resource: before,
         });
       }
