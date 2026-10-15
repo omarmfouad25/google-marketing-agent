@@ -345,7 +345,7 @@ After `gtm_live_check` shows nothing missing, run one row per event and audience
 | What | How |
 |---|---|
 | Workspace edits not published yet | Tag Manager → Workspace Changes → Revert, or `gtm_delete` for something just created (refused while anything references it) |
-| A tag you may want back | Pause it instead of deleting: *"Pause the Old Lead Tag"* (`gtm_upsert` with `paused: true`) |
+| A tag you may want back | Pause it instead of deleting: *"Pause the Old Lead Tag"* (`gtm_upsert` with `resource: { paused: true }`) |
 | A published version | Re-publish the previous one: *"Roll back Tag Manager to version 12"* (`gtm_publish` with `versionId`). `gtm_versions` lists versions |
 | Ads conversion actions and other Ads changes | `ads_rollback` with the change ID (*"Undo that last change"*). A created action is removed |
 | GA4 key events | `ga4_set_key_event` with `action: "remove"` |

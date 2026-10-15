@@ -48,7 +48,7 @@ You:    Track form leads and WhatsApp clicks on acme.com, split business and con
 Agent:  Plan: generate_lead and contact_click, split by /business/ vs /consumer/, 4 Ads actions, 2 goals,
         plus the dataLayer code for your developers. Build it?
 You:    Yes.
-Agent:  Preview 1 of 12: CREATE variables "DLV - form_name" (nothing changed). Create it? …
+Agent:  Preview 1 of 14: CREATE variables "DLV - form_name" (nothing changed). Create it? …
 Agent:  Workspace vs live version 12: 4 variables, 4 triggers, 6 tags added. Publish as "2026-10-15 lead tracking"?
 You:    Yes.
 Agent:  Version 13 is live (rollback: version 12). Live check ✓ every label and event found in gtm.js.
