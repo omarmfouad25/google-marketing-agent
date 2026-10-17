@@ -17,7 +17,8 @@ The safety model, enforced by the server instead of asked of the agent. Design r
   `gtmContainerIds`. Reads still reach every container the login can see.
 - **`rollback` replaces `ads_rollback`** and works across products (see Added).
 - **Renamed for the glossary:** the `account` parameter is now `profile`, `use_account` is `use_profile` and
-  `account_profile` is `get_profile`. Error messages say "profile" where they meant one.
+  `account_profile` is `get_profile`. Passing `account` is refused rather than ignored, so a 0.3 caller never lands on
+  the default profile by accident. Error messages say "profile" where they meant one.
 - **`call` only previews**; add `--apply` to change something (see Added). It now exits 1 when a change is refused,
   declined or failed.
 

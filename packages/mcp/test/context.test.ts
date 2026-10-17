@@ -46,7 +46,7 @@ describe("defineTool", () => {
   it("adds a profile param and passes the resolved ctx", async () => {
     const server = fakeServer();
     defineTool(server as any, store())("echo", "d", { n: z.number() }, async (a, ctx) => text(`${a.n}:${ctx.alias}`));
-    expect(Object.keys(server.tools.echo.shape)).toEqual(["n", "profile"]);
+    expect(Object.keys(server.tools.echo.shape)).toEqual(["n", "profile", "account"]);
     const r = await server.tools.echo.handler({ n: 1, profile: "globex" });
     expect(r.content[0].text).toBe("1:globex");
   });

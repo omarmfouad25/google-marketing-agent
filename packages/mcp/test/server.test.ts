@@ -43,13 +43,19 @@ describe("registerAll", () => {
     for (const n of NO_PROFILE) expect(s.tools[n], n).toBeDefined();
   });
 
-  it("gives every profile-scoped tool the profile parameter, and none the old account one", () => {
+  it("gives every profile-scoped tool the profile parameter, and refuses the 0.3 account one", async () => {
     const s = fakeServer();
     registerAll(s, storeWith(true));
     for (const [name, t] of Object.entries(s.tools)) {
-      expect(t.shape, name).not.toHaveProperty("account");
-      if (NO_PROFILE.includes(name)) expect(t.shape, name).not.toHaveProperty("profile");
-      else expect(t.shape, name).toHaveProperty("profile");
+      if (NO_PROFILE.includes(name)) {
+        expect(t.shape, name).not.toHaveProperty("profile");
+        continue;
+      }
+      expect(t.shape, name).toHaveProperty("profile");
+      expect((t.shape as any).account.safeParse("globex").success, name).toBe(false);
+      expect((t.shape as any).account.safeParse(undefined).success, name).toBe(true);
     }
+    // never falls back to the default profile when a 0.3 caller names another one
+    expect((await s.tools.get_profile.handler({ account: "b" })).content[0].text).toMatch(/^ERROR: "account" was renamed to "profile"/);
   });
 });

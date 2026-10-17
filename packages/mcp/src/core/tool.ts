@@ -11,6 +11,14 @@ export const text = (t: string): ToolResult => ({ content: [{ type: "text", text
 
 const ProfileAlias = z.string().optional().describe("Profile alias from accounts.json. Defaults to the session or default profile");
 
+// Renamed in 0.4. Unknown arguments are dropped silently, so a 0.3 caller's account: "globex" would quietly act on
+// the default profile: keep the name, and refuse it.
+const RenamedAccount = z
+  .unknown()
+  .refine(() => false, { message: '"account" was renamed to "profile" in 0.4' })
+  .optional()
+  .describe('Removed in 0.4: use "profile"');
+
 const ASK_TIMEOUT_MS = 10 * 60_000;
 
 /** The human, through MCP elicitation, when the connected client supports it */
@@ -31,9 +39,10 @@ export function defineTool(server: McpServer, store: AccountStore) {
   function tool<S extends z.ZodRawShape>(name: string, description: string, shape: S, handler: (args: z.infer<z.ZodObject<S>>) => Promise<ToolResult>, opts: { noAccount: true }): void;
   function tool<S extends z.ZodRawShape>(name: string, description: string, shape: S, handler: (args: z.infer<z.ZodObject<S>>, ctx: Ctx) => Promise<ToolResult>): void;
   function tool(name: string, description: string, shape: z.ZodRawShape, handler: (args: any, ctx: Ctx) => Promise<ToolResult>, opts?: { noAccount: true }) {
-    const full = opts?.noAccount ? shape : { ...shape, profile: ProfileAlias };
+    const full = opts?.noAccount ? shape : { ...shape, profile: ProfileAlias, account: RenamedAccount };
     server.tool(name, description, full, async (args: any) => {
       try {
+        if (args.account !== undefined) return text(`ERROR: "account" was renamed to "profile" in 0.4. Nothing was run.`);
         return await handler(args, opts?.noAccount ? (undefined as never) : store.context(args.profile));
       } catch (err) {
         return text(`ERROR: ${formatError(err)}`);
