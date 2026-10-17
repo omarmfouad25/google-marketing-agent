@@ -306,6 +306,13 @@ describe("Profile scope (docs/adr/0002)", () => {
     expect(await run("gtm_upsert", { ...tag, container: "GTM-SERVER" })).not.toMatch(/REFUSED/);
   });
 
+  it("refuses a workspaceId that could point the path at another container", async () => {
+    setup();
+    const r = await run("gtm_upsert", { ...tag, workspaceId: "../../../containers/99/workspaces/1" });
+    expect(r).toMatch(/^ERROR: Invalid workspaceId/);
+    expect(gtm.calls).toEqual([]);
+  });
+
   it("keeps reads Login-wide", async () => {
     setup();
     expect(await run("gtm_list", { entity: "tags", container: "GTM-OTHER" })).not.toMatch(/outside profile/);

@@ -14,6 +14,7 @@ export type Entity = z.infer<typeof Entity>;
 export const Container = z.string().optional().describe("Container public ID (GTM-XXXXXXX). Defaults to the profile's gtmContainerId. Writes only reach containers in the profile");
 export const Workspace = z
   .string()
+  .regex(/^\d+$/, "numeric workspace ID")
   .optional()
   .describe("Workspace ID. Defaults to the first workspace (usually 'Default Workspace')");
 export { Confirm } from "../core/confirm.js";
@@ -75,6 +76,8 @@ export const NO_LIVE = "none (first published version)";
 
 export async function workspacePath(ctx: Ctx, publicId?: string, workspaceId?: string): Promise<string> {
   const parent = await containerPath(ctx, publicId);
+  // the ID goes into the API path: anything but digits could point it at another container, outside the Profile scope
+  if (workspaceId !== undefined && !/^\d+$/.test(workspaceId)) throw new Error(`Invalid workspaceId "${workspaceId}": digits only`);
   if (workspaceId) return `${parent}/workspaces/${workspaceId}`;
   const { data } = await gtm(ctx).accounts.containers.workspaces.list({ parent });
   const ws = data.workspace?.[0];
