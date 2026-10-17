@@ -16,7 +16,7 @@ flowchart LR
 - [Walkthrough](#walkthrough)
 - [Recipe reference](#recipe-reference)
 - [Verify](#verify)
-- [Undo](#undo)
+- [Rollback](#rollback)
 - [Troubleshooting](#troubleshooting)
 
 ## Before you start
@@ -129,7 +129,7 @@ Agent:  Workspace vs live version 12:
         Tags changed:    Old Lead Tag (paused: false → true)
         Publish as "2026-10-15 lead tracking"? Rollback would be version 12.
 You:    Yes.
-Agent:  Version 13 "2026-10-15 lead tracking" is live. Rollback: gtm_publish versionId=12.
+Agent:  Version 13 "2026-10-15 lead tracking" is live. Rollback: rollback with this change re-publishes version 12.
 ```
 
 ### 4. Check it's live
@@ -340,19 +340,19 @@ After `gtm_live_check` shows nothing missing, run one row per event and audience
 - [ ] The Ads conversion action shows **Recording** after 24–48 hours.
 - [ ] Test leads deleted from your CRM.
 
-## Undo
+## Rollback
 
 | What | How |
 |---|---|
 | Workspace edits not published yet | Tag Manager → Workspace Changes → Revert, or `gtm_delete` for something just created (refused while anything references it) |
 | A tag you may want back | Pause it instead of deleting: *"Pause the Old Lead Tag"* (`gtm_upsert` with `resource: { paused: true }`) |
-| A published version | Re-publish the previous one: *"Roll back Tag Manager to version 12"* (`gtm_publish` with `versionId`). `gtm_versions` lists versions |
-| Ads conversion actions and other Ads changes | `ads_rollback` with the change ID (*"Undo that last change"*). A created action is removed |
-| GA4 key events | `ga4_set_key_event` with `action: "remove"` |
+| A published version | *"Roll back that publish"*: `rollback` with its change ID re-publishes the version before it, and stops if a newer one went live since. Any other version: `gtm_publish` with `versionId` (`gtm_versions` lists them) |
+| Ads conversion actions and other Ads changes | `rollback` with the change ID (*"Undo that last change"*). A created action is removed |
+| GA4 key events | `rollback` with the change ID unmarks or re-marks it |
 | GA4 custom dimensions | Archive with `ga4_custom_dimensions` `action: "archive"`. **Permanent:** an archived dimension can't be restored, and re-creating it starts collecting from zero |
 
-`ads_rollback` doesn't undo Tag Manager or GA4 entries; use the rows above. Every applied change is still in the
-change log (*"What changed on acme this week?"*).
+`rollback` doesn't touch unpublished workspace edits; use the first rows. Every applied change is in the change log
+(*"What changed on acme this week?"*).
 
 ## Troubleshooting
 

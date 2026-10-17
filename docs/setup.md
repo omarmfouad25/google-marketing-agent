@@ -224,7 +224,8 @@ Every profile starts read-only: the agent can report and suggest, but not change
 npx google-marketing-agent accounts set acme writes true
 ```
 
-Restart your AI app so the 26 change tools load. Even then, every change is a preview until you confirm it.
+Restart your AI app so the 26 change tools load. Even then, every change is a preview first, applied only once it is
+confirmed (and, in Claude Code, once you accept the server's prompt).
 
 ## Alternative: service account for Tag Manager and GA4 Admin
 

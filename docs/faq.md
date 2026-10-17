@@ -38,13 +38,14 @@ Not at Explorer level: Google reserves planning services for Basic access and ab
 ## Safety and privacy
 
 **Can the agent change my campaigns without asking?**
-No. Every account starts read-only. When you allow changes for an account, each change is still a preview that Google
-validates without applying, and it's applied only after you confirm. See [safety.md](safety.md).
+No. Every profile starts read-only. When you allow changes, each one is still a preview first, and the server applies
+only a change that matches a preview it issued. In apps that support it (Claude Code), the server also asks you
+directly before applying. See [safety.md](safety.md).
 
 **Can I undo a change?**
-Yes, for Google Ads changes: ask *"undo that change"* or use `ads_rollback` with the change ID. It restores the
-previous values and removes what the change created. Tag Manager changes are undone by re-publishing an earlier
-version.
+Yes: ask *"undo that change"* or use `rollback` with the change ID. For Google Ads it restores the previous values and
+removes what the change created; for Tag Manager it re-publishes the version before a publish; for GA4 it unmarks or
+re-marks a key event. If someone edited the same thing since, it shows you and asks before overwriting.
 
 **Where does my data go?**
 From Google to the program on your computer, then to your AI app when you ask a question. The package sends nothing

@@ -15,7 +15,7 @@ One configured client entry, named by an alias, listing the client's product res
 _Avoid_: account, client config
 
 **Profile scope**:
-The product resources a Profile lists, one or more per product (Google Ads accounts, GA4 properties, Search Console sites, GTM containers). Writes are only ever allowed inside it; reads may reach anything the Login can see.
+The product resources a Profile lists: its Google Ads account, GA4 property and Search Console site, and one or more GTM containers. Writes are only ever allowed inside it; reads may reach anything the Login can see.
 _Avoid_: permissions, access
 
 **Google Ads account** / **GA4 property** / **Search Console site** / **GTM container**:

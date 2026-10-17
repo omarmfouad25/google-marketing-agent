@@ -53,17 +53,19 @@ the directory holds `credentials.json` and `changes/` too, and it is set to `070
 | `languages` | no | Default languages for new campaigns: `en`, `ar`, `de`… |
 | `ga4PropertyId` | for GA4 | Numeric property ID |
 | `gscSiteUrl` | for GSC | `sc-domain:example.com` or `https://www.example.com/` |
-| `gtmContainerId` | for GTM | `GTM-XXXXXXX` |
+| `gtmContainerId` | for GTM | `GTM-XXXXXXX`, the default container |
+| `gtmContainerIds` | no | More containers this client owns, such as a server-side one: `["GTM-ABC123"]`. Writes reach only these and `gtmContainerId` |
 | `writes` | no | `false` (default) = read-only. See [safety.md](safety.md) |
+| `requireHumanApproval` | no | `true` = every change needs your answer to the server's prompt; apps that can't ask can't change this client. Default `false` |
 | `guardrails.maxBudgetChangePct` | no | Largest budget change allowed without `allowLargeChange`. Default 50 |
 | `brand` | no | Name, logo path and colours for `monthly-report`. Neutral theme if unset |
 
 ## Using profiles
 
-- Every tool except setup_doctor, guide, accounts_list and use_account takes an optional `account` parameter: `get_campaign_performance({ account: "globex" })`.
-- Without it, tools use `default`, or the account picked with `use_account` in the current session.
+- Every tool except setup_doctor, guide, accounts_list and use_profile takes an optional `profile` parameter: `get_campaign_performance({ profile: "globex" })`.
+- Without it, tools use `default`, or the profile picked with `use_profile` in the current session.
 - `accounts_list` shows every account your login can reach, and which of them have profiles.
-- `account_profile` shows one profile's settings as the agent sees them (no credentials).
+- `get_profile` shows one profile's settings as the agent sees them (no credentials).
 - In conversation: *"Switch to globex"*, *"Audit acme and globex"*.
 
 ## Commands

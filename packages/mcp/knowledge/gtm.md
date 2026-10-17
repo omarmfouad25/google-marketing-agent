@@ -2,7 +2,7 @@
 
 Building, publishing and verifying tracking in a GTM web container safely.
 
-- **Model:** workspace (draft) → version (snapshot) → publish (live). Nothing in the workspace reaches visitors until `gtm_publish`. Rollback = re-publish the previous version (`gtm_versions` lists them, `gtm_publish` with that `versionId`). Every write previews first; apply after a yes.
+- **Model:** workspace (draft) → version (snapshot) → publish (live). Nothing in the workspace reaches visitors until `gtm_publish`. Rollback of a publish = `rollback` with its change ID (re-publishes the version before it; refused if a newer one went live since). Any other version: `gtm_publish` with that `versionId` (`gtm_versions` lists them). Every write previews first; apply after a yes with its Preview ID.
 - **Which tool:** `gtm_build` for the 5 recipes below; `gtm_upsert` for anything else (custom HTML, community templates, other variable types). Before an upsert, copy the exact parameter keys from a similar existing entity with `gtm_get`: Google doesn't validate a create until it happens.
 - **Update vs create:** `gtm_build` without `id` creates, with `id` updates (same recipe type only). Pre-flight blocks duplicate names, missing variables and missing trigger IDs, and nothing changes when it blocks.
 

@@ -1,12 +1,12 @@
 # Tools reference
 
-63 tools across Google Ads, GA4, Search Console and Tag Manager (37 while every profile has writes off; the write tools, including `ads_rollback`, register only when a profile has `writes: true`). `gtm_builtin_variables` and `ga4_custom_dimensions` are always available: they list on any profile, and their enable/create/archive actions need writes. Every tool except setup_doctor, guide, accounts_list and use_account takes an optional `account` (profile
+63 tools across Google Ads, GA4, Search Console and Tag Manager (37 while every profile has writes off; the write tools, including `rollback`, register only when a profile has `writes: true`). `gtm_builtin_variables` and `ga4_custom_dimensions` are always available: they list on any profile, and their enable/create/archive actions need writes. Every tool except setup_doctor, guide, accounts_list and use_profile takes an optional `profile` (profile
 alias; see [profiles.md](profiles.md)). Date-range tools default to the last 30 days. Money is in the account
 currency (micros conversion is done for you).
 
-`setup_doctor`, `guide`, `accounts_list` and `use_account` work with zero profiles and take no `account` param; `changes_list` and `account_profile` are always available.
+`setup_doctor`, `guide`, `accounts_list` and `use_profile` work with zero profiles and take no `profile` param; `changes_list` and `get_profile` are always available.
 
-**Legend:** 📖 read · ✏️ write: preview unless `confirm: true`, needs a profile with `writes: true`
+**Legend:** 📖 read · ✏️ write: without `confirm` it returns a Preview and a Preview ID; call again with the same arguments and `confirm: "<Preview ID>"` to apply (valid 15 minutes, once). Needs a profile with `writes: true`, and only changes what the profile lists
 (see [safety.md](safety.md)) · 📖✏️ reads on any profile, writes like ✏️
 
 For the tracking workflow these tools serve, see [tracking.md](tracking.md).
@@ -17,10 +17,11 @@ For the tracking workflow these tools serve, see [tracking.md](tracking.md).
 |---|---|---|
 | `setup_doctor` | 📖 | Tests OAuth, each API, the Ads access level and every profile; returns the exact fix for each failure |
 | `accounts_list` | 📖 | Every Google Ads account your login can reach (including MCC children), marking those with profiles |
-| `use_account` | 📖 | Switch the default account for this session |
+| `use_profile` | 📖 | Switch the default profile for this session |
 | `guide` | 📖 | Expert knowledge by topic: `gotchas`, `policy`, `access`, `demand-gen`, `measurement`, `gtm`, `benchmarks` |
-| `changes_list` | 📖 | Recent applied changes for an account, from the change log |
-| `account_profile` | 📖 | The resolved profile: currency, timezone, geos, writes, guardrails, brand, linked GA4/GSC/GTM |
+| `changes_list` | 📖 | Recent applied changes for a profile, from the change log, with how each was confirmed |
+| `get_profile` | 📖 | The resolved profile: currency, timezone, geos, writes, human-approval setting, guardrails, brand, linked GA4/GSC/GTM |
+| `rollback` | ✏️ | Roll back one change-log entry in any product: Ads prior values and created resources, Tag Manager publishes, GA4 key events. Refuses Drift unless `acceptDrift: true` |
 
 ## Google Ads: reporting
 
@@ -45,7 +46,6 @@ For the tracking workflow these tools serve, see [tracking.md](tracking.md).
 | `ads_update_budget` | ✏️ | Daily budget; refused above the profile's `maxBudgetChangePct` unless `allowLargeChange` |
 | `ads_update_cpc_bid` | ✏️ | Max CPC on an ad group or keyword (manual CPC campaigns) |
 | `ads_update_networks` | ✏️ | Search Partners / Display expansion on or off; location targeting to presence only |
-| `ads_rollback` | ✏️ | Revert one change-log entry: restore prior values, remove what it created (`changes_list` shows IDs) |
 
 ### Keywords and negatives
 
@@ -89,7 +89,7 @@ For the tracking workflow these tools serve, see [tracking.md](tracking.md).
 #### `ads_create_conversion_action`
 
 Creates an enabled website (`WEBPAGE`) conversion action. Refused if an action with the same name exists. Once
-applied, it prints the `conversionId` and `conversionLabel` for the `ads_conversion_tag` recipe. `ads_rollback`
+applied, it prints the `conversionId` and `conversionLabel` for the `ads_conversion_tag` recipe. `rollback`
 removes it. A primary action (the default) starts counting in bidding for every campaign that bids on its goal
 category; pass `primary: false` to stage it as secondary until the tag is verified.
 
@@ -178,7 +178,7 @@ Changes go into a workspace and are not live until `gtm_publish`. Tag Manager to
 | `gtm_build` | ✏️ | Create or update a variable, trigger or tag from a typed recipe, with pre-flight checks |
 | `gtm_upsert` | ✏️ | Create or update (shallow merge) a tag, trigger or variable |
 | `gtm_delete` | ✏️ | Delete one tag, trigger or variable; refused while anything references it |
-| `gtm_publish` | ✏️ | Publish the workspace, or re-publish an older version (rollback) |
+| `gtm_publish` | ✏️ | Publish the workspace, or re-publish an older version. `rollback` with a publish's change ID re-publishes the version before it |
 
 ### `gtm_build`
 
@@ -192,7 +192,7 @@ every `{{variable}}` exists or is an enabled built-in, and every trigger ID exis
 |---|---|---|
 | `recipe` | yes | `{ kind, name, … }` |
 | `id` | | Update this existing entity instead of creating; it must be the type the recipe builds. An update replaces the entity's parameters, triggers and consent with the recipe's: settings the recipe doesn't model are removed (the preview lists them as `removedSettings`). For partial edits, such as consent only, use `gtm_upsert` |
-| `confirm` | | Apply; omitted = preview |
+| `confirm` | | The Preview ID to apply; omitted = Preview |
 
 ```json
 { "recipe": { "kind": "link_click_trigger", "name": "Link - WhatsApp - Business", "match": "whatsapp",
@@ -235,7 +235,7 @@ Recipes that reference `{{Page Path}}` or `{{Click URL}}` need those built-ins e
 |---|---|---|
 | `action` | yes | `list` (enabled built-ins plus the display name → type map), `enable` or `disable` |
 | `types` | for enable/disable | Built-in types, e.g. `["pagePath", "clickUrl"]` |
-| `confirm` | | Apply; omitted = preview |
+| `confirm` | | The Preview ID to apply; omitted = Preview |
 
 ```json
 { "action": "enable", "types": ["pagePath", "clickUrl"] }
@@ -251,7 +251,7 @@ trigger or variable uses the variable. To keep a tag for later, pause it instead
 |---|---|---|
 | `entity` | yes | `tags`, `triggers` or `variables` |
 | `id` | yes | From `gtm_list` |
-| `confirm` | | Apply; omitted = preview |
+| `confirm` | | The Preview ID to apply; omitted = Preview |
 
 ```json
 { "entity": "tags", "id": "12" }

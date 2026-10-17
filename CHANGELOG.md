@@ -1,5 +1,56 @@
 # Changelog
 
+## 0.4.0 · 2026-10-17
+
+The safety model, enforced by the server instead of asked of the agent. Design records:
+[ADR 0001](docs/adr/0001-confirmations-bound-to-previews.md), [0002](docs/adr/0002-writes-bounded-by-profile-scope.md),
+[0003](docs/adr/0003-rollback-refuses-drift.md); terms in [CONTEXT.md](CONTEXT.md).
+
+### Breaking
+
+- **`confirm` takes a Preview ID, not `true`.** A write without `confirm` returns a Preview and a Preview ID; call it
+  again with the same arguments and `confirm: "<Preview ID>"` to apply. The ID works once, expires after 15 minutes
+  and is void if anything the Preview depended on changed (arguments, current budget, entity fingerprint, live version,
+  workspace diff). `confirm: true` now fails validation instead of applying.
+- **Tag Manager writes stay inside the profile.** `container` on `gtm_upsert`, `gtm_build`, `gtm_delete`,
+  `gtm_builtin_variables` and `gtm_publish` is refused for containers the profile doesn't list. Add others to the new
+  `gtmContainerIds`. Reads still reach every container the login can see.
+- **`rollback` replaces `ads_rollback`** and works across products (see Added).
+- **Renamed for the glossary:** the `account` parameter is now `profile`, `use_account` is `use_profile` and
+  `account_profile` is `get_profile`. Error messages say "profile" where they meant one.
+- **`call` only previews**; add `--apply` to change something (see Added). It now exits 1 when a change is refused,
+  declined or failed.
+
+### Added
+
+- **Human approval.** Where the client supports MCP elicitation (Claude Code), the server asks the user directly before
+  applying, showing the Preview. Decline, cancel or no answer applies nothing. Elsewhere the Confirmation is
+  preview-matched. `"requireHumanApproval": true` on a profile refuses changes the user didn't approve directly.
+- Every change log entry records its confirmation: `human-approved` or `preview-matched` (`changes_list` shows it;
+  older entries show "confirmed before 0.4").
+- **`rollback`** for Google Ads changes, Tag Manager publishes (re-publishes the version before) and GA4 key events and
+  custom dimensions. **Drift** since the change (a later edit, a newer live version, a created campaign enabled by
+  hand) is listed and refused unless `acceptDrift: true`.
+- Every Preview says whether and how its change can be rolled back.
+- `call <tool> <args.json> --apply`: previews and confirms in one run, asking `Apply? [y/N]` in a terminal.
+- Profile fields `gtmContainerIds` and `requireHumanApproval`.
+- `CONTEXT.md` (domain glossary), `docs/adr/` and `docs/agents/`.
+
+### Fixed
+
+- `ads_demand_gen_audience` creates its custom segment only after the Confirmation, so a refused change creates nothing.
+- `gtm_builtin_variables` refuses enable/disable on a read-only profile before any Tag Manager call.
+- `workspaceId` must be digits: other values could point the API path at a container outside the profile.
+
+### Migration
+
+1. Update anything that calls the tools directly: drop `confirm: true`, preview first, then pass the Preview ID.
+   Rename `account` to `profile`.
+2. A client with several Tag Manager containers: list the extra ones in its profile's `gtmContainerIds`.
+3. Scripts that changed things with `call`: add `--apply`.
+4. Existing change logs keep working. Their GTM publishes have no container recorded, so `rollback` refuses them
+   with the version to re-publish by hand.
+
 ## 0.3.0 — 2026-10-15
 
 Measurement: plan, build, publish and verify tracking in Tag Manager, GA4 and Google Ads. Guide:

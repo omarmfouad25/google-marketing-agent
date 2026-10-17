@@ -18,7 +18,7 @@ Agent:  Score 68/100. Biggest leak: 31% of spend is from people outside your tar
 You:    Fix the location targeting on both.
 Agent:  Preview (nothing changed yet): 2 campaigns → people IN the location only. Apply?
 You:    Yes.
-Agent:  Applied (change 3f9c2a1b). You can undo it any time.
+Agent:  Applied (change 3f9c2a1b). You can roll it back any time.
 ```
 
 ## What you can do
@@ -85,9 +85,15 @@ More examples: **[docs/usage.md](docs/usage.md)**.
 
 ## How it keeps your account safe
 
-- **Read-only until you say otherwise**, per account. Agencies can allow changes on one client and keep another read-only.
-- **Preview first.** Google validates every change without applying it; nothing happens until you confirm.
-- **Undo.** Every applied change is logged with its previous state; `ads_rollback` puts it back.
+- **Read-only until you say otherwise**, per client profile. Agencies can allow changes on one client and keep another
+  read-only, and a profile can only change the accounts and containers it lists.
+- **Preview first, enforced.** Google validates every Ads change without applying it. The server applies only a change
+  that matches a preview it issued in the last 15 minutes, so the agent can't skip the preview or apply something
+  different from what you saw.
+- **You approve, not just the agent.** In apps that support it (Claude Code), the server asks you directly before
+  applying. Every change is logged as approved by you or confirmed by the agent.
+- **Rollback.** Every applied change is logged with its previous state; `rollback` puts it back, in Ads, Tag Manager
+  and GA4, and refuses to silently overwrite edits made since.
 - **Guardrails.** New campaigns and ads start **paused**. Budget jumps above 50% (configurable) need an explicit override.
   Location targeting is always "people in the location", never Google's default that also includes people merely
   interested in it.
@@ -152,7 +158,7 @@ folder directly.
 | [Usage](docs/usage.md) | See what to ask for audits, reports, weekly checks and safe changes |
 | [Tracking](docs/tracking.md) | Plan, build, publish and verify lead tracking in Tag Manager, GA4 and Google Ads |
 | [Profiles](docs/profiles.md) | Manage several accounts, defaults, report branding and guardrails |
-| [Safety](docs/safety.md) | Understand previews, guardrails, the change log and undo before allowing changes |
+| [Safety](docs/safety.md) | Understand previews, approvals, guardrails, the change log and rollback before allowing changes |
 | [Skills](docs/skills.md) | Know exactly what each skill checks and produces |
 | [Tools](docs/tools.md) | Look up every tool and its parameters |
 | [How it works](docs/how-it-works.md) | See how the parts fit together and where your data lives |
@@ -163,8 +169,8 @@ folder directly.
 
 - **Does it cost anything?** The package is free (MIT). The Google APIs it uses are free; you only pay for your ads.
 - **Do I need a Google Ads developer token?** No. Access now comes from your Google Cloud project.
-- **Can it change my campaigns without asking?** No. Accounts are read-only by default, and every change needs your
-  confirmation after a preview.
+- **Can it change my campaigns without asking?** No. Profiles are read-only by default, and every change needs a
+  matching preview and, where your app supports it, your own yes to the server.
 - **Where does my data go?** From Google straight to the AI app on your computer. Nothing is sent anywhere else.
 
 More: [docs/faq.md](docs/faq.md).
