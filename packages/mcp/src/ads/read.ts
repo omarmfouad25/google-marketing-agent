@@ -128,7 +128,7 @@ tool(
 // Tool: Search Terms Report
 tool(
   "get_search_terms",
-  "Get actual search queries that triggered your ads — shows what users really searched for, with performance metrics",
+  "Get actual search queries that triggered your ads: shows what users really searched for, with performance metrics",
   {
     dateRange: DateRangeEnum,
     dateFrom: CustomDateFrom,
@@ -150,7 +150,7 @@ tool(
 // Tool: Performance by Date
 tool(
   "get_performance_by_date",
-  "Get daily performance breakdown — trend data for impressions, clicks, cost, conversions over time",
+  "Get daily performance breakdown: trend data for impressions, clicks, cost, conversions over time",
   {
     dateRange: DateRangeEnum,
     dateFrom: CustomDateFrom,

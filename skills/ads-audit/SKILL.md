@@ -78,11 +78,11 @@ Score: NN/100
 ...
 
 ## Findings
-1. <finding> — <evidence with numbers> — money at stake: <currency amount/month>
+1. <finding> · <evidence with numbers> · money at stake: <currency amount/month>
 ...
 
 ## Fix list (highest impact first)
-1. <fix> — tool: `ads_add_negative_keywords` / `ads_update_networks` / ... — effort: low/medium/high
+1. <fix> · tool: `ads_add_negative_keywords` / `ads_update_networks` / ... · effort: low/medium/high
 ```
 
 Money uses the profile currency. Say which areas could not be checked (for example no GA4 linked) instead of guessing.

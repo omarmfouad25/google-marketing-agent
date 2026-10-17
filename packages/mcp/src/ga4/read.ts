@@ -9,7 +9,7 @@ export function registerGa4ReadTools(tool: Tool) {
 // Tool: GA4 Traffic Overview
 tool(
   "ga4_traffic_overview",
-  "Get daily traffic overview from GA4 — sessions, users, pageviews, bounce rate, engagement rate, avg session duration",
+  "Get daily traffic overview from GA4: sessions, users, pageviews, bounce rate, engagement rate, avg session duration",
   {
     dateRange: GA4DateRangeEnum,
     dateFrom: CustomDateFrom,
@@ -25,7 +25,7 @@ tool(
 // Tool: GA4 Top Pages
 tool(
   "ga4_top_pages",
-  "Get top pages by pageviews from GA4 — see which content performs best with engagement metrics",
+  "Get top pages by pageviews from GA4: see which content performs best with engagement metrics",
   {
     dateRange: GA4DateRangeEnum,
     dateFrom: CustomDateFrom,
@@ -42,7 +42,7 @@ tool(
 // Tool: GA4 Traffic Sources
 tool(
   "ga4_traffic_sources",
-  "Get traffic source breakdown from GA4 — source/medium with sessions, users, bounce rate, conversions",
+  "Get traffic source breakdown from GA4: source/medium with sessions, users, bounce rate, conversions",
   {
     dateRange: GA4DateRangeEnum,
     dateFrom: CustomDateFrom,
@@ -59,7 +59,7 @@ tool(
 // Tool: GA4 User Demographics
 tool(
   "ga4_user_demographics",
-  "Get user demographics from GA4 — breakdown by country, city, device, or browser",
+  "Get user demographics from GA4: breakdown by country, city, device, or browser",
   {
     dateRange: GA4DateRangeEnum,
     dateFrom: CustomDateFrom,
@@ -85,7 +85,7 @@ tool(
 // Tool: GA4 Conversions
 tool(
   "ga4_conversions",
-  "Get conversion events from GA4 — which events (form submits, calls, etc.) are driving conversions",
+  "Get conversion events from GA4: which events (form submits, calls, etc.) are driving conversions",
   {
     dateRange: GA4DateRangeEnum,
     dateFrom: CustomDateFrom,
@@ -102,7 +102,7 @@ tool(
 // Tool: GA4 Landing Pages
 tool(
   "ga4_landing_pages",
-  "Get landing page performance from GA4 — entry pages with bounce rate, engagement, and conversions",
+  "Get landing page performance from GA4: entry pages with bounce rate, engagement, and conversions",
   {
     dateRange: GA4DateRangeEnum,
     dateFrom: CustomDateFrom,
@@ -119,7 +119,7 @@ tool(
 // Tool: GA4 Realtime
 tool(
   "ga4_realtime",
-  "Get realtime active users and page views from GA4 — who is on the site right now",
+  "Get realtime active users and page views from GA4: who is on the site right now",
   {
     limit: Limit,
     format: OutputFormat,

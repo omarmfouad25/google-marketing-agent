@@ -75,7 +75,7 @@ Call `get_profile` first (currency, writes, linked GA4).
    | Stage | Search | Demand Gen |
    |---|---|---|
    | Launch, little history | Maximize clicks with a CPC cap (about the line's historical average CPC) | Maximize conversions when the goal records and the budget allows; otherwise Maximize clicks |
-   | Brand campaign | Manual CPC, low bid | — |
+   | Brand campaign | Manual CPC, low bid | none |
    | About 15–30 conversions in 30 days (review in week 3) | Switch from clicks to maximize conversions | Stay |
    | About 30+ conversions a month and a stable cost per lead for 2–4 weeks | Add a target CPA at the achieved level, never below | Same |
 

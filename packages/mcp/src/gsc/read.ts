@@ -9,7 +9,7 @@ export function registerGscReadTools(tool: Tool) {
 // Tool: GSC Search Analytics
 tool(
   "gsc_search_analytics",
-  "Flexible Google Search Console query — get clicks, impressions, CTR, avg position by any dimension (query, page, country, device, date, searchAppearance)",
+  "Flexible Google Search Console query: get clicks, impressions, CTR, avg position by any dimension (query, page, country, device, date, searchAppearance)",
   {
     dimensions: z
       .array(z.enum(["query", "page", "country", "device", "date", "searchAppearance"]))
@@ -55,7 +55,7 @@ tool(
 // Tool: GSC Top Queries
 tool(
   "gsc_top_queries",
-  "Get top search queries from Google Search Console by clicks — see what users search to find your site",
+  "Get top search queries from Google Search Console by clicks: see what users search to find your site",
   {
     dateRange: GSCDateRangeEnum,
     dateFrom: CustomDateFrom,
@@ -81,7 +81,7 @@ tool(
 // Tool: GSC Top Pages
 tool(
   "gsc_top_pages",
-  "Get top pages from Google Search Console by clicks — see which pages get the most organic search traffic",
+  "Get top pages from Google Search Console by clicks: see which pages get the most organic search traffic",
   {
     dateRange: GSCDateRangeEnum,
     dateFrom: CustomDateFrom,
@@ -102,7 +102,7 @@ tool(
 // Tool: GSC Query-Page Matrix
 tool(
   "gsc_query_page_matrix",
-  "Cross-reference which search queries drive traffic to which pages — find content gaps and cannibalization",
+  "Cross-reference which search queries drive traffic to which pages: find content gaps and cannibalization",
   {
     dateRange: GSCDateRangeEnum,
     dateFrom: CustomDateFrom,
@@ -123,7 +123,7 @@ tool(
 // Tool: GSC Index Status
 tool(
   "gsc_index_status",
-  "Inspect a specific URL's index status in Google — coverage, crawl info, mobile usability, rich results",
+  "Inspect a specific URL's index status in Google: coverage, crawl info, mobile usability, rich results",
   {
     url: z.string().describe("Full URL to inspect (e.g. https://www.example.com/products)"),
     format: OutputFormat,
@@ -137,7 +137,7 @@ tool(
 // Tool: GSC Sitemaps
 tool(
   "gsc_sitemaps",
-  "List submitted sitemaps and their status — see submission dates, errors, warnings, and pending state",
+  "List submitted sitemaps and their status: see submission dates, errors, warnings, and pending state",
   {
     format: OutputFormat,
   },
