@@ -139,25 +139,25 @@ describe("discoverAccounts", () => {
 
 describe("account tools", () => {
   const empty = () => new AccountStore({ config: { accounts: {} }, credentials: undefined });
-  it("work with zero profiles and register without an account param", async () => {
+  it("work with zero profiles and register without a profile param", async () => {
     const server = fakeServer();
     const tool = ((name: string, d: string, shape: any, h: any, opts: any) => {
       expect(opts).toEqual({ noAccount: true });
       server.tool(name, d, shape, h);
     }) as any;
     registerAccountTools(tool, empty(), () => ({ listAccessible: async () => ["7"], customer: () => fakeCustomer({ customer_client: [{ customer_client: { id: 7, descriptive_name: "Solo", manager: false, currency_code: "USD", time_zone: "UTC" } }] }) }));
-    expect(Object.keys(server.tools)).toEqual(["setup_doctor", "accounts_list", "use_account"]);
+    expect(Object.keys(server.tools)).toEqual(["setup_doctor", "accounts_list", "use_profile"]);
     expect((await server.tools.setup_doctor!.handler({})).content[0].text).toContain("Not signed in");
     expect((await server.tools.accounts_list!.handler({})).content[0].text).toContain("- 7 Solo (USD) → no profile");
   });
 
-  it("use_account switches the session default and rejects unknown aliases", async () => {
+  it("use_profile switches the session default and rejects unknown aliases", async () => {
     const store = new AccountStore({ config: { default: "a", accounts: { a: { customerId: "1", currency: "USD", timezone: "UTC" }, b: { customerId: "2", currency: "USD", timezone: "UTC" } } }, credentials: undefined });
     const server = fakeServer();
     registerAccountTools(server.tool as any, store);
-    await server.tools.use_account!.handler({ alias: "b" });
+    await server.tools.use_profile!.handler({ alias: "b" });
     expect(store.context().alias).toBe("b");
-    await expect(server.tools.use_account!.handler({ alias: "zzz" })).rejects.toThrow(/Unknown account/);
+    await expect(server.tools.use_profile!.handler({ alias: "zzz" })).rejects.toThrow(/Unknown profile/);
   });
 });
 

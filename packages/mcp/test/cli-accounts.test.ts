@@ -22,10 +22,10 @@ describe("setField", () => {
   });
 
   it("rejects unknown aliases, unknown fields and bad values", () => {
-    expect(() => setField(config(), "nope", "writes", "true")).toThrow(/Unknown account "nope"/);
+    expect(() => setField(config(), "nope", "writes", "true")).toThrow(/Unknown profile "nope"/);
     expect(() => setField(config(), "acme", "colour", "red")).toThrow(/Unknown field "colour"/);
     expect(() => setField(config(), "acme", "__proto__.x", "1")).toThrow(/Unknown field/);
-    for (const alias of ["__proto__", "constructor", "toString"]) expect(() => setField(config(), alias, "writes", "true")).toThrow(/Unknown account/);
+    for (const alias of ["__proto__", "constructor", "toString"]) expect(() => setField(config(), alias, "writes", "true")).toThrow(/Unknown profile/);
     expect((({}) as any).writes).toBeUndefined();
     expect(() => setField(config(), "acme", "customerId", "abc")).toThrow(/numeric/);
     expect(() => setField(config(), "acme", "guardrails.maxBudgetChangePct", "1e3")).toThrow(/positive number/);
@@ -92,7 +92,7 @@ describe("commands (temp config dir, injected deps)", () => {
     expect(loadConfig().default).toBe("b");
     await accountsCommand([]);
     expect(log.mock.calls.flat().join("\n")).toMatch(/\* b {2}2/);
-    await expect(accountsCommand(["default", "zzz"])).rejects.toThrow(/Unknown account/);
+    await expect(accountsCommand(["default", "zzz"])).rejects.toThrow(/Unknown profile/);
     await expect(accountsCommand(["set", "a", "writes"])).rejects.toThrow(/Usage/);
   });
 
@@ -117,7 +117,7 @@ describe("commands (temp config dir, injected deps)", () => {
     expect(await addProfiles(deps(["9"]))).toBe(1);
     await expect(addProfiles(deps(["1", "__proto__"]))).rejects.toThrow(/Invalid alias/);
     await expect(accountsCommand(["default"])).rejects.toThrow(/Usage/);
-    await expect(accountsCommand(["default", "__proto__"])).rejects.toThrow(/Unknown account/);
+    await expect(accountsCommand(["default", "__proto__"])).rejects.toThrow(/Unknown profile/);
   });
 
   it("stores the resolved service account path", async () => {

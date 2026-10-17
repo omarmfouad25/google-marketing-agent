@@ -16,7 +16,7 @@ site → Tag Manager → GA4 → Google Ads → campaign goals.
 
 ## Inputs
 
-- `account` with `gtmContainerId` and `ga4PropertyId` set (check with `account_profile`; the `setup` skill adds them).
+- `account` with `gtmContainerId` and `ga4PropertyId` set (check with `get_profile`; the `setup` skill adds them).
 - The lead types that matter (forms, calls, messaging clicks, bookings) and the audiences they belong to (for example
   business buyers vs consumers, often split by URL path).
 

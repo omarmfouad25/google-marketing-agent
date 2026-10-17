@@ -7,7 +7,7 @@ import { AccountStore } from "../src/core/context.js";
 import { defineTool } from "../src/core/tool.js";
 import { registerGa4AdminTools } from "../src/ga4/admin.js";
 import { listChanges } from "../src/core/changelog.js";
-import { fakeServer } from "./fakes.js";
+import { fakeServer, previewId } from "./fakes.js";
 
 const credentials = { clientId: "id", clientSecret: "s", refreshToken: "r" };
 const existing = { name: "properties/5/customDimensions/1", parameterName: "form_name", displayName: "Form name", scope: "EVENT" };
@@ -31,6 +31,7 @@ function setup(writes = true) {
   registerGa4AdminTools(defineTool(server as any, store), { writes });
 }
 const run = async (args: Record<string, unknown>) => (await server.tools.ga4_custom_dimensions.handler(args)).content[0].text as string;
+const apply = async (args: Record<string, unknown>) => run({ ...args, confirm: previewId(await server.tools.ga4_custom_dimensions.handler(args)) });
 afterEach(() => vi.restoreAllMocks());
 
 describe("ga4_custom_dimensions", () => {
@@ -43,7 +44,7 @@ describe("ga4_custom_dimensions", () => {
 
   it("refuses create on a read-only profile", async () => {
     setup(false);
-    expect(await run({ action: "create", parameterName: "lead_type", displayName: "Lead type", confirm: true })).toMatch(/^REFUSED/);
+    expect(await run({ action: "create", parameterName: "lead_type", displayName: "Lead type", confirm: "pv_00000000" })).toMatch(/^REFUSED/);
     expect(calls).toEqual([]);
   });
 
@@ -52,25 +53,25 @@ describe("ga4_custom_dimensions", () => {
     expect(await run({ action: "create", parameterName: "form_name", displayName: "Form name" })).toMatch(/already registered/);
     expect(await run({ action: "create", parameterName: "lead_type", displayName: "Lead type" })).toMatch(/CREATE EVENT custom dimension "Lead type" \(lead_type\) \(nothing changed\)/);
     expect(calls).toEqual([]);
-    await run({ action: "create", parameterName: "lead_type", displayName: "Lead type", confirm: true });
+    await apply({ action: "create", parameterName: "lead_type", displayName: "Lead type" });
     expect(calls[0]).toEqual({ method: "create", args: { parent: "properties/5", requestBody: { parameterName: "lead_type", displayName: "Lead type", scope: "EVENT" } } });
-    expect(listChanges("acme", 5)[0]).toMatchObject({ product: "ga4", tool: "ga4_custom_dimensions" });
+    expect(listChanges("acme", 5)[0]).toMatchObject({ product: "ga4", tool: "ga4_custom_dimensions", confirmation: "preview-matched" });
   });
 
   it("archives a dimension by name", async () => {
     setup();
     const preview = await run({ action: "archive", name: existing.name });
     expect(preview).toMatch(/ARCHIVE custom dimension "Form name"/);
-    expect(preview).toMatch(/can't be restored/);
+    expect(preview).toMatch(/Rollback: not possible: archived dimensions can't be restored/);
     expect(calls).toEqual([]);
-    await run({ action: "archive", name: existing.name, confirm: true });
+    await apply({ action: "archive", name: existing.name });
     expect(calls[0]).toEqual({ method: "archive", args: { name: existing.name } });
     expect(await run({ action: "archive", name: "properties/5/customDimensions/999" })).toMatch(/not found/);
   });
 
   it("refuses archive on a read-only profile", async () => {
     setup(false);
-    expect(await run({ action: "archive", name: existing.name, confirm: true })).toMatch(/^REFUSED/);
+    expect(await run({ action: "archive", name: existing.name, confirm: "pv_00000000" })).toMatch(/^REFUSED/);
     expect(calls).toEqual([]);
   });
 

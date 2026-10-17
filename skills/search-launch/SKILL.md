@@ -23,7 +23,7 @@ languages, landing pages. For Demand Gen use `demand-gen-launch`.
 
 ## Steps
 
-Call `account_profile` first (currency, geos, languages, writes). Use `guide("policy")` for wording rules.
+Call `get_profile` first (currency, geos, languages, writes). Use `guide("policy")` for wording rules.
 
 1. **Keywords per ad group.** One product or intent theme per ad group, 5–15 tightly themed keywords, **exact and
    phrase match only**.
@@ -57,7 +57,7 @@ Call `account_profile` first (currency, geos, languages, writes). Use `guide("po
      (resume), never duplicated. An ad group that already has an RSA is done; an ad group without one resumes at
      `ads_create_rsa`.
 5. **Build, paused.** Each step is a preview first and applied only after a yes. With the user's agreement you may
-   preview the whole build, then apply step by step.
+   preview the whole build, then apply step by step. Each Preview ID works once and expires after 15 minutes.
    1. `ads_create_search_campaign`: name, `dailyBudget`, `bidding` from the plan's stage (MAXIMIZE_CLICKS with
       `maxCpc` at launch, MANUAL_CPC for brand; `maxCpc` applies only with MAXIMIZE_CLICKS), `geoTargetIds`, `languages` = every language the landing page exists
       in. It is created paused, presence-only, Search network only.
@@ -88,7 +88,7 @@ Call `account_profile` first (currency, geos, languages, writes). Use `guide("po
 ## Output
 
 1. The approved copy document (tables with character counts).
-2. A build log: each step, the created IDs, and the change IDs (for undo).
+2. A build log: each step, the created IDs, and the change IDs (for `rollback`).
 3. The pre-launch table, and the launch confirmation or what's still blocking.
 
 ## Never

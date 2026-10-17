@@ -12,6 +12,7 @@ import { registerAccountTools } from "./accounts/tools.js";
 import { registerGuide } from "./accounts/guide-tool.js";
 import { registerChangesList } from "./accounts/changes.js";
 import { registerProfileTool } from "./accounts/profile-tool.js";
+import { registerRollback } from "./accounts/rollback.js";
 
 export function registerAll(server: { tool: (...a: any[]) => void }, store: AccountStore, opts: { writes?: boolean } = {}) {
   const writes = opts.writes ?? store.anyWritable();
@@ -25,5 +26,7 @@ export function registerAll(server: { tool: (...a: any[]) => void }, store: Acco
   registerGa4AdminTools(tool, { writes });
   registerGscReadTools(tool);
   registerGtmTools(tool, { writes });
-  if (writes) registerAdsWriteTools(tool); // includes ads_rollback
+  if (!writes) return;
+  registerAdsWriteTools(tool);
+  registerRollback(tool); // every product's Changes
 }

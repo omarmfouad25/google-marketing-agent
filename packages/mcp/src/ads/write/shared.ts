@@ -3,7 +3,7 @@ import type { Ctx } from "../../core/context.js";
 
 export const Id = z.string().regex(/^\d+$/, "numeric ID");
 export const CompositeId = z.string().regex(/^\d+~\d+$/, "format adGroupId~id").describe("adGroupId~id (e.g. 123~456)");
-export const Confirm = z.boolean().optional().describe("false/omitted = dry run (validate_only). true = apply the change for real");
+export { Confirm } from "../../core/confirm.js";
 export const Status = z.enum(["ENABLED", "PAUSED"]);
 export const MatchType = z.enum(["EXACT", "PHRASE", "BROAD"]);
 export const KeywordList = z.array(z.object({ text: z.string().min(1).max(80), matchType: MatchType })).min(1);

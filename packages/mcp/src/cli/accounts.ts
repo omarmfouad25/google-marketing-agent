@@ -9,7 +9,7 @@ const STR = new Set([...DIGITS, "currency", "timezone", "ga4PropertyId", "gscSit
 
 export function setField(config: Config, alias: string, field: string, value: string): Config {
   const profile = Object.hasOwn(config.accounts, alias) ? config.accounts[alias] : undefined;
-  if (!profile) throw new Error(`Unknown account "${alias}". Known: ${Object.keys(config.accounts).join(", ")}`);
+  if (!profile) throw new Error(`Unknown profile "${alias}". Known: ${Object.keys(config.accounts).join(", ")}`);
   let v: unknown;
   if (BOOL.has(field)) {
     if (value !== "true" && value !== "false") throw new Error(`${field} must be true or false`);
@@ -46,7 +46,7 @@ export async function accountsCommand(args: string[], addProfiles = async () => 
   }
   if (sub === "default") {
     if (!rest[0]) throw new Error("Usage: accounts default <alias>");
-    if (!Object.hasOwn(config.accounts, rest[0])) throw new Error(`Unknown account "${rest[0]}"`);
+    if (!Object.hasOwn(config.accounts, rest[0])) throw new Error(`Unknown profile "${rest[0]}"`);
     saveConfig({ ...config, default: rest[0] });
     return 0;
   }

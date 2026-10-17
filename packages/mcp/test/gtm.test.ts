@@ -9,21 +9,26 @@ import { registerGtmTools } from "../src/gtm/tools.js";
 import { referencesTo } from "../src/gtm/manage.js";
 import { compareEntities, expectedStrings } from "../src/gtm/versions.js";
 import { listChanges } from "../src/core/changelog.js";
-import { fakeGtm, fakeServer, WS } from "./fakes.js";
+import { fakeGtm, fakeServer, previewId, WS } from "./fakes.js";
 
 const credentials = { clientId: "id", clientSecret: "s", refreshToken: "r" };
 let gtm: ReturnType<typeof fakeGtm>;
 let server: ReturnType<typeof fakeServer>;
 
-function setup(init: Parameters<typeof fakeGtm>[0] = {}, writes = true) {
+function setup(init: Parameters<typeof fakeGtm>[0] = {}, writes = true, profile: Record<string, unknown> = { gtmContainerId: "GTM-TEST" }) {
   process.env.GOOGLE_MARKETING_AGENT_CONFIG = join(mkdtempSync(join(tmpdir(), "gma-")), "accounts.json");
   gtm = fakeGtm(init);
   vi.spyOn(google, "tagmanager").mockReturnValue(gtm.api as any);
-  const store = new AccountStore({ config: { accounts: { acme: { customerId: "1", currency: "USD", timezone: "UTC", gtmContainerId: "GTM-TEST", writes } } }, credentials });
+  const store = new AccountStore({ config: { accounts: { acme: { customerId: "1", currency: "USD", timezone: "UTC", writes, ...profile } } }, credentials });
   server = fakeServer();
   registerGtmTools(defineTool(server as any, store), { writes });
 }
 const run = async (name: string, args: Record<string, unknown>) => (await server.tools[name].handler(args)).content[0].text as string;
+/** Preview, then confirm with its ID */
+const apply = async (name: string, args: Record<string, unknown>) => {
+  const preview = await server.tools[name].handler(args);
+  return run(name, { ...args, confirm: previewId(preview) });
+};
 afterEach(() => vi.restoreAllMocks());
 
 const p = (key: string, value: string) => ({ type: "template", key, value });
@@ -39,7 +44,7 @@ describe("gtm_build", () => {
     expect(preview).toMatch(/CREATE triggers "CE - generate_lead - Business" \(nothing changed\)/);
     expect(preview).toContain('"negate"');
     expect(gtm.calls).toEqual([]);
-    const applied = await run("gtm_build", { recipe, confirm: true });
+    const applied = await apply("gtm_build", { recipe });
     expect(applied).toMatch(/CREATED in workspace \(not live until gtm_publish\)/);
     expect(gtm.calls[0].method).toBe("triggers.create");
     expect(gtm.calls[0].args.parent).toBe(WS);
@@ -79,7 +84,7 @@ describe("gtm_build", () => {
     const preview = await run("gtm_build", { recipe: ga4, id: "7" });
     expect(preview).toMatch(/UPDATE tags\/7 "GA4 Event - x" \(nothing changed\)/);
     expect(preview).toContain('"parameter"');
-    await run("gtm_build", { recipe: ga4, id: "7", confirm: true });
+    await apply("gtm_build", { recipe: ga4, id: "7" });
     expect(gtm.calls[0]).toMatchObject({ method: "tags.update", args: { path: `${WS}/tags/7`, fingerprint: "f0" } });
   });
 
@@ -191,14 +196,14 @@ describe("gtm_publish", () => {
   it("publishes a never-published container, with no rollback version", async () => {
     setup({ live: null, changes: change });
     expect(await run("gtm_publish", { name: "v1" })).toMatch(/"liveVersion": "none \(first published version\)"/);
-    const r = JSON.parse(await run("gtm_publish", { name: "v1", confirm: true }));
+    const r = JSON.parse(await apply("gtm_publish", { name: "v1" }));
     expect(r.rollback).toBe("none (first published version)");
     expect(gtm.calls.map((c) => c.method)).toEqual(["workspaces.create_version", "versions.publish"]);
   });
 
   it("previews a re-publish when nothing is live", async () => {
     setup({ live: null });
-    expect(JSON.parse(await run("gtm_publish", { versionId: "3" })).preview).toBe("RE-PUBLISH version 3 (live is none (first published version))");
+    expect(await run("gtm_publish", { versionId: "3" })).toMatch(/^PREVIEW: RE-PUBLISH version 3 \(live is none \(first published version\), nothing changed\)/);
   });
 });
 
@@ -219,7 +224,7 @@ describe("gtm_builtin_variables", () => {
 
   it("refuses enable on a read-only profile", async () => {
     setup({}, false);
-    expect(await run("gtm_builtin_variables", { action: "enable", types: ["clickUrl"], confirm: true })).toMatch(/^REFUSED/);
+    expect(await run("gtm_builtin_variables", { action: "enable", types: ["clickUrl"], confirm: "pv_00000000" })).toMatch(/^REFUSED/);
   });
 
   it("previews, skips already-enabled types, then enables and logs", async () => {
@@ -228,14 +233,14 @@ describe("gtm_builtin_variables", () => {
     const preview = await run("gtm_builtin_variables", { action: "enable", types: ["pagePath", "clickUrl"] });
     expect(preview).toMatch(/ENABLE built-in variables: clickUrl \(nothing changed\)/);
     expect(gtm.calls).toEqual([]);
-    await run("gtm_builtin_variables", { action: "enable", types: ["pagePath", "clickUrl"], confirm: true });
+    await apply("gtm_builtin_variables", { action: "enable", types: ["pagePath", "clickUrl"] });
     expect(gtm.calls[0]).toMatchObject({ method: "built_in_variables.create", args: { parent: WS, type: ["clickUrl"] } });
     expect(listChanges("acme", 5)[0]).toMatchObject({ tool: "gtm_builtin_variables" });
   });
 
   it("disables only enabled types", async () => {
     setup({ builtIns: [PAGE_PATH] });
-    await run("gtm_builtin_variables", { action: "disable", types: ["pagePath", "clickUrl"], confirm: true });
+    await apply("gtm_builtin_variables", { action: "disable", types: ["pagePath", "clickUrl"] });
     expect(gtm.calls[0]).toMatchObject({ method: "built_in_variables.delete", args: { path: `${WS}/built_in_variables`, type: ["pagePath"] } });
   });
 
@@ -261,7 +266,7 @@ describe("gtm_delete", () => {
 
   it("refuses to delete a referenced trigger", async () => {
     setup({ tags: [tag], triggers: [trigger24] });
-    const r = await run("gtm_delete", { entity: "triggers", id: "24", confirm: true });
+    const r = await run("gtm_delete", { entity: "triggers", id: "24", confirm: "pv_00000000" });
     expect(r).toMatch(/^REFUSED \(nothing changed\)/);
     expect(r).toContain('tag "Ads - old"');
     expect(gtm.calls).toEqual([]);
@@ -272,7 +277,7 @@ describe("gtm_delete", () => {
     const preview = await run("gtm_delete", { entity: "tags", id: "5" });
     expect(preview).toMatch(/DELETE tags\/5 "Ads - old" \(nothing changed\)/);
     expect(preview).toMatch(/pausing/i);
-    const applied = await run("gtm_delete", { entity: "tags", id: "5", confirm: true });
+    const applied = await apply("gtm_delete", { entity: "tags", id: "5" });
     expect(applied).toMatch(/DELETED from workspace \(not live until gtm_publish\)/);
     expect(gtm.calls[0]).toMatchObject({ method: "tags.delete", args: { path: `${WS}/tags/5` } });
     expect(listChanges("acme", 5)[0]).toMatchObject({ tool: "gtm_delete", before: { name: "Ads - old" } });
@@ -281,5 +286,40 @@ describe("gtm_delete", () => {
   it("is not registered on a read-only profile", () => {
     setup({}, false);
     expect(server.tools.gtm_delete).toBeUndefined();
+  });
+});
+
+describe("Profile scope (docs/adr/0002)", () => {
+  const tag = { entity: "tags", resource: { name: "x", type: "html" } };
+
+  it("refuses writes to a container outside the profile, before any GTM call", async () => {
+    setup();
+    for (const [name, args] of [["gtm_upsert", tag], ["gtm_publish", { name: "v" }], ["gtm_delete", { entity: "tags", id: "5" }], ["gtm_builtin_variables", { action: "enable", types: ["clickUrl"] }]] as const) {
+      expect(await run(name, { ...args, container: "GTM-OTHER" }), name).toMatch(/^REFUSED \(nothing changed\): GTM container GTM-OTHER is outside profile "acme" \(GTM-TEST\)/);
+    }
+    expect(gtm.calls).toEqual([]);
+  });
+
+  it("allows every container listed in gtmContainerIds, the first being the default", async () => {
+    setup({}, true, { gtmContainerIds: ["GTM-TEST", "GTM-SERVER"] });
+    expect(await run("gtm_upsert", tag)).toMatch(/^PREVIEW: CREATE tags/);
+    expect(await run("gtm_upsert", { ...tag, container: "GTM-SERVER" })).not.toMatch(/REFUSED/);
+  });
+
+  it("keeps reads Login-wide", async () => {
+    setup();
+    expect(await run("gtm_list", { entity: "tags", container: "GTM-OTHER" })).not.toMatch(/outside profile/);
+  });
+});
+
+describe("gtm_publish binding", () => {
+  it("refuses the Confirmation when the workspace changed after the Preview", async () => {
+    setup({ changes: [{ changeStatus: "added", tag: { name: "GA4 - lead" } }] });
+    const preview = await server.tools.gtm_publish.handler({ name: "leads" });
+    expect(preview.content[0].text).toMatch(/Rollback: possible with rollback \(re-publishes version 1, live now\)/);
+    gtm.state.changes.push({ changeStatus: "added", tag: { name: "a colleague's tag" } });
+    const r = await run("gtm_publish", { name: "leads", confirm: previewId(preview) });
+    expect(r).toMatch(/^REFUSED \(nothing changed\): this change no longer matches preview/);
+    expect(gtm.calls).toEqual([]);
   });
 });

@@ -17,12 +17,12 @@ consent default, and gives the user's developers a short checklist for what Tag 
 
 ## Inputs
 
-- `account` with `gtmContainerId` set (check with `account_profile`; the `setup` skill adds it).
+- `account` with `gtmContainerId` set (check with `get_profile`; the `setup` skill adds it).
 - The regions the site serves that require opt-in, and the consent banner in use.
 
 ## Steps
 
-Call `account_profile` first. Consent rules: `guide("measurement")`; tag recipes and the publish checklist:
+Call `get_profile` first. Consent rules: `guide("measurement")`; tag recipes and the publish checklist:
 `guide("gtm")`.
 
 1. **Inventory.** `gtm_list` with `entity: "tags"`, then `gtm_get` on every active tag for its `type`,
@@ -68,7 +68,7 @@ Call `account_profile` first. Consent rules: `guide("measurement")`; tag recipes
    - A missing consent default: install the CMP's Tag Manager template on Consent Initialization (community
      templates are added in the Tag Manager interface), then configure it with `gtm_upsert`.
    - Review and publish as in the `gtm-build` skill: `gtm_versions` with `versionId: "workspace"` shown in full,
-     `gtm_publish` with a dated name after a yes, rollback version noted, then `gtm_live_check`.
+     `gtm_publish` with a dated name after a yes, its change ID noted for `rollback`, then `gtm_live_check`.
 
 ## Output
 

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { enums } from "google-ads-api";
 import type { Tool } from "../../core/tool.js";
 import { text } from "../../core/tool.js";
-import { assertWritable, runAdsWrite } from "../../core/runner.js";
+import { adsRollbackNote, assertWritable, runAdsWrite } from "../../core/runner.js";
 import { appendChange } from "../../core/changelog.js";
 import type { Op } from "../../core/changelog.js";
 import { formatError } from "../../core/errors.js";
@@ -17,7 +17,7 @@ const ImagePaths = z.array(z.string().min(1)).max(20);
 export function registerDemandGen(tool: Tool) {
   tool(
     "ads_create_demand_gen_campaign",
-    "Create a Demand Gen campaign (always PAUSED) with its own daily budget and presence-only location setting. Locations and languages go on each ad group (ads_create_demand_gen_ad). Assign its goal with ads_assign_custom_goal. Dry run unless confirm=true",
+    "Create a Demand Gen campaign (always PAUSED) with its own daily budget and presence-only location setting. Locations and languages go on each ad group (ads_create_demand_gen_ad). Assign its goal with ads_assign_custom_goal. Preview first; apply with confirm set to its Preview ID",
     {
       name: z.string().min(1),
       dailyBudget: z.number().positive().describe("Daily budget in the account currency"),
@@ -71,7 +71,7 @@ export function registerDemandGen(tool: Tool) {
 
   tool(
     "ads_create_demand_gen_ad",
-    "Create a Demand Gen ad group (or use an existing one) with one multi-asset image ad (always PAUSED). Images are local JPG/PNG paths: landscape 1.91:1, square 1:1, portrait 4:5, logo 1:1. Dry run unless confirm=true",
+    "Create a Demand Gen ad group (or use an existing one) with one multi-asset image ad (always PAUSED). Images are local JPG/PNG paths: landscape 1.91:1, square 1:1, portrait 4:5, logo 1:1. Preview first; apply with confirm set to its Preview ID",
     {
       campaignId: Id,
       adGroupName: z.string().min(1).optional().describe("Create a new ad group with this name"),
@@ -162,8 +162,8 @@ export function registerDemandGen(tool: Tool) {
     "ads_demand_gen_audience",
     "Build a Demand Gen audience from existing user lists, an optional new lookalike (seeded from a user list; countryCodes required) and an " +
       "optional new custom segment (search terms + competitor URLs), then attach it to ad groups. Segments are OR'd. " +
-      "The custom segment is its own API call: on confirm it is created first (reuse it later via customAudienceId). " +
-      "Dry run unless confirm=true",
+      "A new custom segment is its own API call, made first once the change is confirmed (reuse it later via customAudienceId). " +
+      "Preview first; apply with confirm set to its Preview ID",
     {
       name: z.string().min(1).describe("Audience name (unique in the account)"),
       adGroupIds: z.array(Id).min(1),
@@ -191,31 +191,15 @@ export function registerDemandGen(tool: Tool) {
       ];
       if (p.customSegment && !members.length) return text("customSegment needs keywords and/or urls.");
 
-      let customAudience = p.customAudienceId ? rn(ctx, "customAudiences", p.customAudienceId) : undefined;
-      let note = "";
-      if (members.length) {
-        const ca = { name: `${p.name} | custom segment`, type: enums.CustomAudienceType.SEARCH, members };
-        try {
-          const res = await ctx.customer().customAudiences.create([ca], { validate_only: !p.confirm });
-          if (p.confirm) {
-            customAudience = res.results[0]!.resource_name!;
-            appendChange(ctx.alias, {
-              product: "ads",
-              tool: "ads_demand_gen_audience",
-              summary: `Create custom segment ${ca.name}`,
-              created: [{ entity: "custom_audience", resource_name: customAudience }],
-            });
-            note = `Custom segment created: ${customAudience}\n`;
-          } else {
-            note = `Custom segment "${ca.name}" (${members.length} members) validated; it is left out of the batch dry run below because it does not exist yet.\n`;
-          }
-        } catch (err) {
-          return text(`${p.confirm ? "FAILED" : "DRY RUN FAILED"} (nothing changed): custom segment\n\n${formatError(err)}`);
-        }
-      }
+      // A new custom segment is its own API call, made only after the Confirmation. Until then the plan refers to
+      // it by a placeholder, so the Preview binds the whole plan (segment included) before anything exists.
+      const NEW_SEGMENT = "<new custom segment>";
+      const isNew = (s: Record<string, any>) => s.custom_audience?.custom_audience === NEW_SEGMENT;
+      const ca = members.length ? { name: `${p.name} | custom segment`, type: enums.CustomAudienceType.SEARCH, members } : undefined;
+      const customAudience = p.customAudienceId ? rn(ctx, "customAudiences", p.customAudienceId) : ca ? NEW_SEGMENT : undefined;
 
       const ops: Op[] = [];
-      const segments: Record<string, unknown>[] = (p.userListIds ?? []).map((id) => ({ user_list: { user_list: rn(ctx, "userLists", id) } }));
+      const segments: Record<string, any>[] = (p.userListIds ?? []).map((id) => ({ user_list: { user_list: rn(ctx, "userLists", id) } }));
       if (p.lookalikeSeedId) {
         const lookalike = rn(ctx, "userLists", "-1");
         ops.push({
@@ -234,8 +218,7 @@ export function registerDemandGen(tool: Tool) {
         segments.push({ user_list: { user_list: lookalike } });
       }
       if (customAudience) segments.push({ custom_audience: { custom_audience: customAudience } });
-      if (!segments.length && !p.confirm && members.length) return text(`DRY RUN OK (nothing changed)\n\n${note}Nothing else to validate yet: attach it with customAudienceId after confirming.`);
-      if (!segments.length) return text(`${note}No segments: give userListIds, lookalikeSeedId or a custom segment.`);
+      if (!segments.length) return text("No segments: give userListIds, lookalikeSeedId or a custom segment.");
 
       const audience = rn(ctx, "audiences", "-2");
       ops.push({
@@ -251,15 +234,56 @@ export function registerDemandGen(tool: Tool) {
       for (const id of p.adGroupIds) {
         ops.push({ entity: "ad_group_criterion", operation: "create", resource: { ad_group: rn(ctx, "adGroups", id), audience: { audience } } });
       }
-      return runAdsWrite(ctx, {
-        tool: "ads_demand_gen_audience",
-        summary:
-          `${note}Audience "${p.name}": ${segments.length} segment(s) [user lists ${(p.userListIds ?? []).join(", ") || "none"}` +
-          `${p.lookalikeSeedId ? `, lookalike of ${p.lookalikeSeedId} (${p.lookalikeLevel ?? "NARROW"})` : ""}` +
-          `${customAudience ? `, custom segment` : ""}] → ad groups ${p.adGroupIds.join(", ")}`,
-        ops,
-        confirm: p.confirm,
-      });
+      const summary =
+        `Audience "${p.name}": ${segments.length} segment(s) [user lists ${(p.userListIds ?? []).join(", ") || "none"}` +
+        `${p.lookalikeSeedId ? `, lookalike of ${p.lookalikeSeedId} (${p.lookalikeLevel ?? "NARROW"})` : ""}` +
+        `${customAudience ? `, ${ca ? `new custom segment "${ca.name}" (${members.length} members)` : "custom segment"}` : ""}] → ad groups ${p.adGroupIds.join(", ")}`;
+      const content = { ca, ops, summary };
+
+      if (!p.confirm) {
+        if (ca) {
+          try {
+            await ctx.customer().customAudiences.create([ca], { validate_only: true });
+          } catch (err) {
+            return text(`PREVIEW FAILED (nothing changed): custom segment\n\n${formatError(err)}`);
+          }
+        }
+        // the batch can only be validated without the segment that doesn't exist yet
+        const batch = ops.map((op) => (op.entity !== "audience" ? op : { ...op, resource: { ...op.resource, dimensions: [{ audience_segments: { segments: segments.filter((s) => !isNew(s)) } }] } }));
+        const validatable = segments.some((s) => !isNew(s));
+        if (validatable) {
+          try {
+            await ctx.customer().mutateResources(batch as any, { validate_only: true });
+          } catch (err) {
+            return text(`PREVIEW FAILED (nothing changed)\n\n${summary}\n\n${formatError(err)}`);
+          }
+        }
+        const checked = ca ? `Google validated the custom segment${validatable ? " and the rest of the batch without it (it doesn't exist yet)" : "; the audience can only be checked once the segment exists"}.` : `Google validated ${ops.length} operation(s).`;
+        return ctx.gate.preview(ctx, "ads_demand_gen_audience", content, `PREVIEW (nothing changed). ${checked}\n\n${summary}`, adsRollbackNote([...(ca ? [{ entity: "custom_audience", operation: "create" as const, resource: ca }] : []), ...ops]));
+      }
+
+      const ok = await ctx.gate.confirm(ctx, "ads_demand_gen_audience", content, p.confirm, summary);
+      if ("refused" in ok) return text(ok.refused);
+      let note = "";
+      let real = ops;
+      if (ca) {
+        let segment: string;
+        try {
+          segment = (await ctx.customer().customAudiences.create([ca])).results[0]!.resource_name!;
+        } catch (err) {
+          return text(`FAILED (nothing changed): custom segment\n\n${formatError(err)}`);
+        }
+        appendChange(ctx.alias, {
+          product: "ads",
+          tool: "ads_demand_gen_audience",
+          summary: `Create custom segment ${ca.name}`,
+          confirmation: ok.kind,
+          created: [{ entity: "custom_audience", resource_name: segment }],
+        });
+        note = `Custom segment created: ${segment} (reuse it later via customAudienceId)\n`;
+        real = JSON.parse(JSON.stringify(ops).replaceAll(JSON.stringify(NEW_SEGMENT), JSON.stringify(segment)));
+      }
+      return runAdsWrite(ctx, { tool: "ads_demand_gen_audience", summary: `${note}${summary}`, ops: real, confirmed: ok.kind });
     }
   );
 }

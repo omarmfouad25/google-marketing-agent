@@ -4,6 +4,7 @@ import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync } from "
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { configPaths } from "./config.js";
+import type { ConfirmationKind } from "./confirm.js";
 
 export type Op = { entity: string; operation: "create" | "update" | "remove"; resource: any };
 export type Snapshot = { entity: string; resource_name: string; values: Record<string, unknown> };
@@ -16,7 +17,9 @@ export type ChangeEntry = {
   summary: string;
   ops?: Op[];
   before?: Snapshot[];
-  created?: { entity: string; resource_name: string }[];
+  created?: { entity: string; resource_name: string; status?: unknown }[];
+  /** How it was confirmed; entries from before 0.4 have none */
+  confirmation?: ConfirmationKind;
   snapshotError?: string;
   notSnapshotted?: string[];
   [k: string]: unknown;

@@ -1,11 +1,12 @@
 // Google Tag Manager tools: read the container, edit the workspace, publish versions.
 // Workspace edits are invisible to visitors until published; edits and publishes are
-// still dry runs unless confirm=true, and applied ones go to the account's change log.
+// still Previews until confirmed with a Preview ID, and applied ones go to the profile's Change log.
 
 import { z } from "zod";
 import { assertWritable } from "../core/runner.js";
+import { gated } from "../core/confirm.js";
 import { text, type Tool } from "../core/tool.js";
-import { Confirm, Container, Entity, NO_LIVE, Workspace, containerPath, diff, entityApi, gtm, idField, json, liveVersion, logged, workspacePath } from "./shared.js";
+import { Confirm, Container, Entity, NO_LIVE, Workspace, containerPath, diff, entityApi, gtm, idField, json, liveVersion, logged, outOfScope, WORKSPACE_ROLLBACK, workspacePath } from "./shared.js";
 import { registerGtmBuild } from "./build.js";
 import { registerGtmBuiltins, registerGtmDelete } from "./manage.js";
 import { registerGtmVersions } from "./versions.js";
@@ -95,7 +96,7 @@ export function registerGtmTools(tool: Tool, { writes }: { writes: boolean }) {
 
   tool(
     "gtm_upsert",
-    "Create (no id) or update (id) a tag, trigger, or variable in the workspace. For updates, `resource` is shallow-merged onto the current definition (pass full nested arrays like `parameter`). Not live until gtm_publish. Preview unless confirm=true",
+    "Create (no id) or update (id) a tag, trigger, or variable in the workspace. For updates, `resource` is shallow-merged onto the current definition (pass full nested arrays like `parameter`). Not live until gtm_publish. Preview first; apply with confirm set to its Preview ID",
     {
       entity: Entity,
       id: z.string().regex(/^\d+$/).optional(),
@@ -105,50 +106,54 @@ export function registerGtmTools(tool: Tool, { writes }: { writes: boolean }) {
       confirm: Confirm,
     },
     async ({ entity, id, resource, container, workspaceId, confirm }, ctx) => {
-      const refused = assertWritable(ctx);
+      const refused = assertWritable(ctx) ?? outOfScope(ctx, container);
       if (refused) return text(refused);
       const ws = await workspacePath(ctx, container, workspaceId);
       const apiFor = entityApi(ctx, entity) as any;
       if (!id) {
-        if (!confirm) return json({ preview: "CREATE (nothing changed)", entity, workspace: ws, resource });
+        const g = await gated(ctx, { tool: "gtm_upsert", confirm, headline: `PREVIEW: CREATE ${entity} (nothing changed)`, detail: { workspace: ws, resource }, rollback: WORKSPACE_ROLLBACK });
+        if (typeof g !== "string") return g;
         const { data } = await apiFor.create({ parent: ws, requestBody: resource });
-        return logged(ctx, { product: "gtm", tool: "gtm_upsert", summary: `create ${entity} "${data.name ?? resource.name ?? ""}"`, action: "create", entity, workspace: ws, result: data }, { applied: "CREATED in workspace (not live until gtm_publish)", resource: data });
+        return logged(ctx, { product: "gtm", tool: "gtm_upsert", summary: `create ${entity} "${data.name ?? resource.name ?? ""}"`, confirmation: g, action: "create", entity, workspace: ws, result: data }, { applied: "CREATED in workspace (not live until gtm_publish)", resource: data });
       }
       const path = `${ws}/${entity}/${id}`;
       const { data: before } = await apiFor.get({ path });
       const after = { ...before, ...resource };
       const changes = diff(before, after);
       if (!Object.keys(changes).length) return json("No differences: nothing to update.");
-      if (!confirm) return json({ preview: `UPDATE ${entity}/${id} "${before.name}" (nothing changed)`, changes });
+      const g = await gated(ctx, { tool: "gtm_upsert", confirm, headline: `PREVIEW: UPDATE ${entity}/${id} "${before.name}" (nothing changed)`, detail: { changes }, state: before.fingerprint, rollback: WORKSPACE_ROLLBACK });
+      if (typeof g !== "string") return g;
       const { data } = await apiFor.update({ path, fingerprint: before.fingerprint, requestBody: after });
-      return logged(ctx, { product: "gtm", tool: "gtm_upsert", summary: `update ${entity}/${id} "${before.name}"`, action: "update", entity, path, before, changes }, { applied: "UPDATED in workspace (not live until gtm_publish)", changes, fingerprint: data.fingerprint });
+      return logged(ctx, { product: "gtm", tool: "gtm_upsert", summary: `update ${entity}/${id} "${before.name}"`, confirmation: g, action: "update", entity, path, before, changes }, { applied: "UPDATED in workspace (not live until gtm_publish)", changes, fingerprint: data.fingerprint });
     }
   );
 
   tool(
     "gtm_publish",
-    "Publish the workspace as a new live container version, or re-publish an existing versionId (rollback). Preview unless confirm=true",
+    "Publish the workspace as a new live container version, or re-publish an existing versionId. To undo a publish, use rollback with its changeId. Preview first; apply with confirm set to its Preview ID",
     {
       name: z.string().optional().describe("Version name (required when publishing the workspace)"),
       notes: z.string().optional(),
-      versionId: z.string().regex(/^\d+$/).optional().describe("Re-publish this existing version instead (rollback)"),
+      versionId: z.string().regex(/^\d+$/).optional().describe("Re-publish this existing version instead"),
       container: Container,
       workspaceId: Workspace,
       confirm: Confirm,
     },
     async ({ name, notes, versionId, container, workspaceId, confirm }, ctx) => {
-      const refused = assertWritable(ctx);
+      const refused = assertWritable(ctx) ?? outOfScope(ctx, container);
       if (refused) return text(refused);
       const parent = await containerPath(ctx, container);
       const c = gtm(ctx).accounts.containers;
       const liveId = (await liveVersion(ctx, parent))?.containerVersionId ?? undefined;
       const liveLabel = liveId ?? NO_LIVE;
+      const rollback = liveId ? `possible with rollback (re-publishes version ${liveId}, live now).` : "not possible: this is the container's first published version, so there is nothing to go back to.";
 
       if (versionId) {
-        const path = `${parent}/versions/${versionId}`;
-        if (!confirm) return json({ preview: `RE-PUBLISH version ${versionId} (live is ${liveLabel})` });
-        await c.versions.publish({ path });
-        return logged(ctx, { product: "gtm", tool: "gtm_publish", summary: `republish version ${versionId}`, action: "republish", versionId, previousLive: liveId }, { applied: `Version ${versionId} is now live`, previousLive: liveLabel });
+        if (versionId === liveId) return json(`Version ${versionId} is already live: nothing to publish.`);
+        const g = await gated(ctx, { tool: "gtm_publish", confirm, headline: `PREVIEW: RE-PUBLISH version ${versionId} (live is ${liveLabel}, nothing changed)`, state: { parent }, rollback });
+        if (typeof g !== "string") return g;
+        await c.versions.publish({ path: `${parent}/versions/${versionId}` });
+        return logged(ctx, { product: "gtm", tool: "gtm_publish", summary: `republish version ${versionId}`, confirmation: g, action: "republish", container: parent, versionId, previousLive: liveId }, { applied: `Version ${versionId} is now live`, previousLive: liveLabel });
       }
 
       const ws = await workspacePath(ctx, container, workspaceId);
@@ -161,7 +166,8 @@ export function registerGtmTools(tool: Tool, { writes }: { writes: boolean }) {
       if (!changes?.length) return json("Workspace has no pending changes: nothing to publish.");
       if (status.mergeConflict?.length) return json("BLOCKED: workspace has merge conflicts. Resolve in the GTM UI.");
       if (!name) return json("Provide a version name.");
-      if (!confirm) return json({ preview: `PUBLISH "${name}" (nothing changed)`, liveVersion: liveLabel, changes });
+      const g = await gated(ctx, { tool: "gtm_publish", confirm, headline: `PREVIEW: PUBLISH "${name}" (nothing changed)`, detail: { liveVersion: liveLabel, changes, notes }, state: { ws }, rollback });
+      if (typeof g !== "string") return g;
 
       const created = (await c.workspaces.create_version({ path: ws, requestBody: { name, notes } })).data;
       if (created.compilerError || !created.containerVersion?.path) {
@@ -169,9 +175,9 @@ export function registerGtmTools(tool: Tool, { writes }: { writes: boolean }) {
       }
       await c.versions.publish({ path: created.containerVersion.path });
       const newId = created.containerVersion.containerVersionId;
-      return logged(ctx, { product: "gtm", tool: "gtm_publish", summary: `publish version ${newId} "${name}"`, action: "publish", name, newVersion: newId, previousLive: liveId, changes }, {
+      return logged(ctx, { product: "gtm", tool: "gtm_publish", summary: `publish version ${newId} "${name}"`, confirmation: g, action: "publish", container: parent, name, newVersion: newId, previousLive: liveId, changes }, {
         applied: `Version ${newId} "${name}" is live`,
-        rollback: liveId ? `gtm_publish versionId=${liveId}` : NO_LIVE,
+        rollback: liveId ? "rollback with the changeId from changes_list re-publishes the previous version" : NO_LIVE,
         changes,
       });
     }

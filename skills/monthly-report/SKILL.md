@@ -20,7 +20,7 @@ End-of-month client or management reporting. For "what changed and why" use `per
 
 ## Steps
 
-1. `account_profile`: currency, timezone, `brand`, and whether `ga4PropertyId` and `gscSiteUrl` are set.
+1. `get_profile`: currency, timezone, `brand`, and whether `ga4PropertyId` and `gscSiteUrl` are set.
 2. **Ads.** `get_account_summary` and `get_campaign_performance` for the month, `get_account_summary` for the month
    before (for the change column), and the top 15 search terms by cost (`get_search_terms` sorts by clicks):
    `run_gaql_query` with `SELECT search_term_view.search_term, metrics.cost_micros, metrics.clicks, metrics.conversions FROM search_term_view WHERE segments.date BETWEEN '<from>' AND '<to>' ORDER BY metrics.cost_micros DESC LIMIT 15`.

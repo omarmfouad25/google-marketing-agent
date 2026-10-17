@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { google } from "googleapis";
 import { requireField, type Ctx } from "../core/context.js";
+import type { Profile } from "../core/config.js";
 import { appendChange } from "../core/changelog.js";
 import { text } from "../core/tool.js";
 import { formatError } from "../core/errors.js";
@@ -10,12 +11,12 @@ import { formatError } from "../core/errors.js";
 export const Entity = z.enum(["tags", "triggers", "variables"]);
 export type Entity = z.infer<typeof Entity>;
 
-export const Container = z.string().optional().describe("Container public ID (GTM-XXXXXXX). Defaults to the profile's gtmContainerId");
+export const Container = z.string().optional().describe("Container public ID (GTM-XXXXXXX). Defaults to the profile's gtmContainerId. Writes only reach containers in the profile");
 export const Workspace = z
   .string()
   .optional()
   .describe("Workspace ID. Defaults to the first workspace (usually 'Default Workspace')");
-export const Confirm = z.boolean().optional().describe("false/omitted = preview only. true = apply");
+export { Confirm } from "../core/confirm.js";
 
 // keyed by public ID: the same container ID resolves to the same path for every account
 export const containerPaths = new Map<string, string>();
@@ -30,12 +31,25 @@ export function logged(ctx: Ctx, entry: Parameters<typeof appendChange>[1], appl
   }
   return json(applied);
 }
-/** Headline stays plain text (JSON would escape its quotes); the detail follows as JSON */
-export const preview = (headline: string, detail: object) => text(`${headline}\n\n${JSON.stringify(detail, null, 2)}`);
 export const json = (v: unknown) => text(typeof v === "string" ? v : JSON.stringify(v, null, 2));
 
+/** GTM containers in the Profile scope; the first is the default */
+export const scopeContainers = (p: Profile) => [...new Set([p.gtmContainerId, ...(p.gtmContainerIds ?? [])].filter((c): c is string => Boolean(c)))];
+
+/** Writes stay inside the Profile scope (docs/adr/0002): the refusal to return, or undefined */
+export function outOfScope(ctx: Ctx, publicId?: string): string | undefined {
+  const allowed = scopeContainers(ctx.profile);
+  const target = publicId ?? allowed[0];
+  if (target && allowed.includes(target)) return undefined;
+  if (!target) return `REFUSED (nothing changed): profile "${ctx.alias}" has no GTM container. Add gtmContainerId to it in accounts.json (see docs/profiles.md).`;
+  return `REFUSED (nothing changed): GTM container ${target} is outside profile "${ctx.alias}" (${allowed.join(", ") || "no containers"}). Add it to the profile's gtmContainerIds in accounts.json, or use the profile that lists it.`;
+}
+
+export const WORKSPACE_ROLLBACK =
+  "not through rollback, because workspace edits are invisible until published. Before publishing, revert it in Tag Manager → Workspace Changes; after publishing, roll back the publish.";
+
 export async function containerPath(ctx: Ctx, publicId?: string): Promise<string> {
-  const id = publicId ?? requireField(ctx, "gtmContainerId");
+  const id = publicId ?? scopeContainers(ctx.profile)[0] ?? requireField(ctx, "gtmContainerId");
   const cached = containerPaths.get(id);
   if (cached) return cached;
   const { data } = await gtm(ctx).accounts.list();

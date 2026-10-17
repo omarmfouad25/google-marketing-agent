@@ -10,7 +10,7 @@ when that step is green.
 
 ## When to use
 
-- First run: no profiles, or tools answer "No accounts configured" / "Not signed in".
+- First run: no profiles, or tools answer "No profiles configured" / "Not signed in".
 - A tool failed with `invalid_grant`, `USER_PERMISSION_DENIED`, `PERMISSION_DENIED`, a disabled API, or test-level access.
 - The user wants to add another Google Ads account or link GA4 / Search Console / Tag Manager.
 
@@ -47,7 +47,7 @@ None. Everything comes from `setup_doctor` and the user's answers.
    Search Console Full or Restricted user; Tag Manager Read/Edit/Publish) and the profile field to set
    (`ga4PropertyId` numeric ID, `gscSiteUrl` exactly as Search Console lists it, `gtmContainerId` `GTM-XXXX`).
 7. After each fix, call `setup_doctor` again and report only what changed.
-8. When everything they need is green, call `account_profile` and summarise the profile. Mention that profiles are
+8. When everything they need is green, call `get_profile` and summarise the profile. Mention that profiles are
    read-only; changes need `npx google-marketing-agent accounts set <alias> writes true` after reading the safety
    guide, then a restart of their MCP client.
 

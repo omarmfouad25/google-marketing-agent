@@ -20,7 +20,7 @@ campaign before launch use the `pre-launch-check` skill; for "what changed last 
 
 ## Steps
 
-Call `account_profile` first (currency, linked GA4). Call `guide("gotchas")` once before writing GAQL. Money in raw
+Call `get_profile` first (currency, linked GA4). Call `guide("gotchas")` once before writing GAQL. Money in raw
 `run_gaql_query` output is already converted from micros.
 
 1. **Measurement (25 points).** `guide("measurement")`.

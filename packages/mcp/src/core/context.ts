@@ -5,6 +5,7 @@ import { BetaAnalyticsDataClient } from "@google-analytics/data";
 import { google } from "googleapis";
 import type { OAuth2Client } from "google-auth-library";
 import { Config, ConfigError, Credentials, Profile, loadConfig, loadCredentials } from "./config.js";
+import { Gate } from "./confirm.js";
 
 // Developer tokens were sunset on 2026-09-09; the value is ignored, but API v23 still rejects a missing header.
 export const DEVELOPER_TOKEN_PLACEHOLDER = "unused";
@@ -24,6 +25,7 @@ export type Ctx = {
   oauth(): OAuth2Client;
   ga4Data(): BetaAnalyticsDataClient;
   trackingAuth(): OAuth2Client | InstanceType<typeof google.auth.GoogleAuth>;
+  gate: Gate;
 };
 
 type Deps = { config?: Config; credentials?: Credentials; makeCustomer?: (p: Profile) => Customer };
@@ -34,6 +36,8 @@ export class AccountStore {
   private makeCustomer: (p: Profile) => Customer;
   private session?: string;
   private problems: ConfigError[] = [];
+  // one per server: Previews are issued and confirmed across tool calls
+  readonly gate = new Gate();
 
   // Lenient: a malformed accounts.json / credentials.json must not stop the server or the doctor.
   // The error is kept and rethrown by context() / credentials(); setup_doctor reports it.
@@ -90,14 +94,15 @@ export class AccountStore {
       oauth: () => this.oauth(),
       ga4Data: () => this.ga4Data(),
       trackingAuth: () => this.trackingAuth(),
+      gate: this.gate,
     };
   }
 
   private profile(alias?: string): Profile {
     if (this.problems[0]) throw this.problems[0];
-    if (!this.aliases().length) throw new ConfigError("No accounts configured. Run: npx google-marketing-agent init");
+    if (!this.aliases().length) throw new ConfigError("No profiles configured. Run: npx google-marketing-agent init");
     const p = alias && Object.hasOwn(this.config.accounts, alias) ? this.config.accounts[alias] : undefined;
-    if (!p) throw new ConfigError(`Unknown account "${alias ?? ""}". Known: ${this.aliases().join(", ")}. Add one with: npx google-marketing-agent init`);
+    if (!p) throw new ConfigError(`Unknown profile "${alias ?? ""}". Known: ${this.aliases().join(", ")}. Add one with: npx google-marketing-agent init`);
     return p;
   }
 

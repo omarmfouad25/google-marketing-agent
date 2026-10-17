@@ -19,7 +19,7 @@ Once a week per account, or whenever the user wants a quick health pass. For a d
 
 ## Steps
 
-Call `account_profile` first (currency, writes, guardrails).
+Call `get_profile` first (currency, writes, guardrails).
 
 1. **Spend vs budget.** Daily budgets from `get_campaign_budgets` (its cost column covers the campaign's lifetime, so
    ignore it); spend from `get_performance_by_date` for the last 7 days. Flag campaigns

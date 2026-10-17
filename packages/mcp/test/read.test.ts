@@ -53,7 +53,7 @@ describe("buildDateClause", () => {
 });
 
 describe("read tools", () => {
-  it("query the account named by the alias", async () => {
+  it("query the Google Ads account of the profile named by the alias", async () => {
     const customers: Record<string, ReturnType<typeof fakeCustomer>> = {
       "111": fakeCustomer({ customer: [{ customer: { id: 111 }, metrics: { cost_micros: 2_000_000 } }] }),
       "222": fakeCustomer({ customer: [{ customer: { id: 222 }, metrics: { cost_micros: 5_000_000 } }] }),
@@ -65,7 +65,7 @@ describe("read tools", () => {
     });
     const server = fakeServer();
     registerAdsReadTools(defineTool(server as any, store));
-    const r = await server.tools.get_account_summary.handler({ account: "b", format: "json" });
+    const r = await server.tools.get_account_summary.handler({ profile: "b", format: "json" });
     expect(r.content[0].text).toContain('"cost": 5');
     expect(customers["111"].queries).toHaveLength(0);
   });

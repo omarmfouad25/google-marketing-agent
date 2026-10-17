@@ -15,7 +15,11 @@ export type Profile = {
   ga4PropertyId?: string;
   gscSiteUrl?: string;
   gtmContainerId?: string;
+  /** More GTM containers in this Profile's scope; gtmContainerId (or the first of these) is the default */
+  gtmContainerIds?: string[];
   writes?: boolean;
+  /** Refuse Confirmations the human didn't answer directly (apps without MCP elicitation can't write) */
+  requireHumanApproval?: boolean;
   guardrails?: { maxBudgetChangePct?: number };
   brand?: { name?: string; logo?: string; colors?: string[] };
 };
@@ -60,6 +64,8 @@ const profileShape = z
     customerId: id,
     loginCustomerId: id.optional(),
     writes: z.boolean().optional(),
+    requireHumanApproval: z.boolean().optional(),
+    gtmContainerIds: z.array(z.string().regex(/^GTM-[A-Z0-9]+$/)).optional(),
     guardrails: z.object({ maxBudgetChangePct: z.number().positive() }).partial().optional(),
   })
   .passthrough();
@@ -78,7 +84,11 @@ export function loadConfig(): Config {
     if (!r.success) {
       const issue = r.error.issues[0];
       const field = issue.path.join(".") || "profile";
-      const want = field === "writes" ? "true or false" : field.startsWith("guardrails") ? "a positive number (guardrails.maxBudgetChangePct)" : "a string or number";
+      const want =
+        field === "writes" || field === "requireHumanApproval" ? "true or false"
+        : field.startsWith("guardrails") ? "a positive number (guardrails.maxBudgetChangePct)"
+        : field.startsWith("gtmContainerIds") ? 'a list of container IDs like ["GTM-ABC123"]'
+        : "a string or number";
       throw new ConfigError(`Invalid ${file}: profile "${alias}" field "${field}" must be ${want}`);
     }
     accounts[alias] = { ...(p as object), ...r.data } as Profile;

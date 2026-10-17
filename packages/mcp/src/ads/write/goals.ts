@@ -20,7 +20,7 @@ export function parseSendTo(snippets: { event_snippet?: string }[] | undefined) 
 export function registerGoals(tool: Tool) {
   tool(
     "ads_set_conversion_primary",
-    "Make conversion actions primary (used for bidding) or secondary (reporting only). Dry run unless confirm=true",
+    "Make conversion actions primary (used for bidding) or secondary (reporting only). Preview first; apply with confirm set to its Preview ID",
     { conversionActionIds: z.array(Id).min(1), primary: z.boolean(), confirm: Confirm },
     async ({ conversionActionIds, primary, confirm }, ctx) => {
       const refused = assertWritable(ctx);
@@ -45,7 +45,7 @@ export function registerGoals(tool: Tool) {
 
   tool(
     "ads_create_conversion_action",
-    "Create a website (WEBPAGE) conversion action, e.g. a lead form or contact click, and print its conversion ID and label for gtm_build ads_conversion_tag. Counting defaults to ONE_PER_CLICK (right for leads). A primary action starts counting in bidding for campaigns using that goal category: primary false to stage it. Dry run unless confirm=true; ads_rollback removes it",
+    "Create a website (WEBPAGE) conversion action, e.g. a lead form or contact click, and print its conversion ID and label for gtm_build ads_conversion_tag. Counting defaults to ONE_PER_CLICK (right for leads). A primary action starts counting in bidding for campaigns using that goal category: primary false to stage it. Preview first; apply with confirm set to its Preview ID; rollback removes it",
     {
       name: z.string().min(1).max(100).refine((s) => !/['\\]/.test(s), "no quotes or backslashes").refine((s) => !/[\r\n\x00-\x1f]/.test(s), "no newlines or control characters"),
       category: z.enum(["SUBMIT_LEAD_FORM", "CONTACT", "PHONE_CALL_LEAD", "BOOK_APPOINTMENT", "REQUEST_QUOTE", "SIGNUP", "OUTBOUND_CLICK", "PURCHASE", "PAGE_VIEW", "DEFAULT"]),
@@ -90,7 +90,7 @@ export function registerGoals(tool: Tool) {
 
   tool(
     "ads_update_conversion_action",
-    "Rename a conversion action and/or change its category, counting (ONE_PER_CLICK / MANY_PER_CLICK) or primary flag. Tag labels are unchanged. Dry run unless confirm=true",
+    "Rename a conversion action and/or change its category, counting (ONE_PER_CLICK / MANY_PER_CLICK) or primary flag. Tag labels are unchanged. Preview first; apply with confirm set to its Preview ID",
     {
       conversionActionId: Id,
       name: z.string().min(1).optional(),
@@ -127,7 +127,7 @@ export function registerGoals(tool: Tool) {
 
   tool(
     "ads_create_custom_goal",
-    "Create a custom conversion goal from specific conversion actions (e.g. 'B2B Leads'). Dry run unless confirm=true",
+    "Create a custom conversion goal from specific conversion actions (e.g. 'B2B Leads'). Preview first; apply with confirm set to its Preview ID",
     { name: z.string().min(1), conversionActionIds: z.array(Id).min(1), confirm: Confirm },
     async ({ name, conversionActionIds, confirm }, ctx) =>
       runAdsWrite(ctx, {
@@ -150,7 +150,7 @@ export function registerGoals(tool: Tool) {
 
   tool(
     "ads_assign_custom_goal",
-    "Make a campaign bid on a custom goal instead of account/category goals. Find goal IDs with run_gaql_query on custom_conversion_goal. Dry run unless confirm=true",
+    "Make a campaign bid on a custom goal instead of account/category goals. Find goal IDs with run_gaql_query on custom_conversion_goal. Preview first; apply with confirm set to its Preview ID",
     { campaignId: Id, customGoalId: Id, confirm: Confirm },
     async ({ campaignId, customGoalId, confirm }, ctx) =>
       runAdsWrite(ctx, {
@@ -173,7 +173,7 @@ export function registerGoals(tool: Tool) {
 
   tool(
     "ads_set_campaign_goals",
-    "Choose which conversion categories (website origin) a campaign bids on. Unlisted categories are left as they are. Dry run unless confirm=true",
+    "Choose which conversion categories (website origin) a campaign bids on. Unlisted categories are left as they are. Preview first; apply with confirm set to its Preview ID",
     {
       campaignId: Id,
       biddable: z.array(GoalCategory).optional().describe("Categories to bid on"),

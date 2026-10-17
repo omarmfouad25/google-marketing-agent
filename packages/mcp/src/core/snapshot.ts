@@ -1,11 +1,11 @@
-// Prior-state capture for updates and the inverse operations used by ads_rollback. Pure functions.
+// Prior-state capture for Ads updates and the inverse operations a rollback uses. Pure functions.
 
 import { getPath, setPath } from "./paths.js";
 import type { ChangeEntry, Op, Snapshot } from "./changelog.js";
 
 // Created resources this rollback can't remove through mutateResources: assets (Google keeps them, unused once the
 // ad is removed) and custom segments (own service; remove them in the UI or reuse them via customAudienceId)
-const NOT_REMOVABLE = new Set(["asset", "custom_audience"]);
+export const NOT_REMOVABLE = new Set(["asset", "custom_audience"]);
 
 function flatten(obj: Record<string, unknown>, prefix = ""): string[] {
   return Object.entries(obj).flatMap(([k, v]) => {
