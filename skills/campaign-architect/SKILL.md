@@ -24,7 +24,7 @@ Ask once, all together, for whatever the data can't answer:
 
 ## Steps
 
-Call `account_profile` first (currency, writes, linked GA4).
+Call `get_profile` first (currency, writes, linked GA4).
 
 1. **Baseline, last 30 and 90 days (read-only).** Don't plan from a blank sheet: the current account shows what to fix.
    If the account has no campaigns yet, run `tracking-audit` before building anything.
@@ -75,7 +75,7 @@ Call `account_profile` first (currency, writes, linked GA4).
    | Stage | Search | Demand Gen |
    |---|---|---|
    | Launch, little history | Maximize clicks with a CPC cap (about the line's historical average CPC) | Maximize conversions when the goal records and the budget allows; otherwise Maximize clicks |
-   | Brand campaign | Manual CPC, low bid | — |
+   | Brand campaign | Manual CPC, low bid | none |
    | About 15–30 conversions in 30 days (review in week 3) | Switch from clicks to maximize conversions | Stay |
    | About 30+ conversions a month and a stable cost per lead for 2–4 weeks | Add a target CPA at the achieved level, never below | Same |
 

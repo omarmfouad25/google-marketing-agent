@@ -70,7 +70,7 @@ export async function runDoctor(p: Probes): Promise<Line[]> {
     return broken.map((label) => ({ ok: false, label, fix: "Fix the JSON / field shown, or re-run npx google-marketing-agent init" }));
   if (!p.credentials()) return [{ ok: false, label: "Not signed in", fix: "Run: npx google-marketing-agent init" }];
   const profiles = Object.entries(p.config().accounts);
-  if (!profiles.length) return [{ ok: false, label: "No accounts configured", fix: "Run: npx google-marketing-agent init" }];
+  if (!profiles.length) return [{ ok: false, label: "No profiles configured", fix: "Run: npx google-marketing-agent init" }];
 
   const lines: Line[] = [];
   if (p.credentialsTooOpen?.())

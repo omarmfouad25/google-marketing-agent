@@ -10,7 +10,7 @@ import { Confirm, Id, Status, money, rn, rows } from "./shared.js";
 export function registerStatusBudgetBids(tool: Tool) {
   tool(
     "ads_set_status",
-    "Pause or enable campaigns, ad groups, ads, or keywords. Dry run unless confirm=true",
+    "Pause or enable campaigns, ad groups, ads, or keywords. Preview first; apply with confirm set to its Preview ID",
     {
       level: z.enum(["campaign", "ad_group", "ad", "keyword"]),
       ids: z
@@ -43,7 +43,7 @@ export function registerStatusBudgetBids(tool: Tool) {
 
   tool(
     "ads_update_budget",
-    "Change a campaign's daily budget (in the account currency). Blocks changes beyond the profile's budget guardrail (default ±50%) unless allowLargeChange. Dry run unless confirm=true",
+    "Change a campaign's daily budget (in the account currency). Blocks changes beyond the profile's budget guardrail (default ±50%) unless allowLargeChange. Preview first; apply with confirm set to its Preview ID",
     {
       campaignId: Id,
       dailyBudget: z.number().positive().describe("New daily budget in the account currency"),
@@ -84,7 +84,7 @@ export function registerStatusBudgetBids(tool: Tool) {
 
   tool(
     "ads_update_cpc_bid",
-    "Set max CPC bid (account currency) on an ad group or keyword. Only applies to manual CPC campaigns. Dry run unless confirm=true",
+    "Set max CPC bid (account currency) on an ad group or keyword. Only applies to manual CPC campaigns. Preview first; apply with confirm set to its Preview ID",
     {
       level: z.enum(["ad_group", "keyword"]),
       id: z.string().regex(/^\d+(~\d+)?$/).describe("ad_group: numeric ID. keyword: adGroupId~criterionId"),
@@ -105,7 +105,7 @@ export function registerStatusBudgetBids(tool: Tool) {
   tool(
     "ads_update_networks",
     "Opt a Search campaign in/out of Search Partners and Display expansion, and/or set location targeting to " +
-      "presence only (people in the targeted locations) vs presence or interest. Dry run unless confirm=true",
+      "presence only (people in the targeted locations) vs presence or interest. Preview first; apply with confirm set to its Preview ID",
     {
       campaignId: Id,
       searchPartners: z.boolean().optional(),

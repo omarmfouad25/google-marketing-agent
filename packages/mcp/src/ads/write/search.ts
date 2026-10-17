@@ -11,7 +11,7 @@ import { Confirm, Id, KeywordList, Languages, geosFor, money, rn } from "./share
 export function registerSearch(tool: Tool) {
   tool(
     "ads_create_search_campaign",
-    "Create a Search campaign (always PAUSED) with its own daily budget, presence-only geo (profile geos by default), language targeting, Google Search only. Dry run unless confirm=true",
+    "Create a Search campaign (always PAUSED) with its own daily budget, presence-only geo (profile geos by default), language targeting, Google Search only. Preview first; apply with confirm set to its Preview ID",
     {
       name: z.string().min(1),
       dailyBudget: z.number().positive().describe("Daily budget in the account currency"),
@@ -96,7 +96,7 @@ export function registerSearch(tool: Tool) {
 
   tool(
     "ads_create_ad_group",
-    "Create a Search ad group (ENABLED, inside its campaign) with optional keywords. Dry run unless confirm=true",
+    "Create a Search ad group (ENABLED, inside its campaign) with optional keywords. Preview first; apply with confirm set to its Preview ID",
     {
       campaignId: Id,
       name: z.string().min(1),
@@ -140,7 +140,7 @@ export function registerSearch(tool: Tool) {
 
   tool(
     "ads_create_rsa",
-    "Create a Responsive Search Ad (always PAUSED). 3-15 headlines (≤30 chars), 2-4 descriptions (≤90 chars). Dry run unless confirm=true",
+    "Create a Responsive Search Ad (always PAUSED). 3-15 headlines (≤30 chars), 2-4 descriptions (≤90 chars). Preview first; apply with confirm set to its Preview ID",
     {
       adGroupId: Id,
       headlines: z.array(z.string().min(1).max(30)).min(3).max(15),
@@ -182,7 +182,7 @@ export function registerSearch(tool: Tool) {
 
   tool(
     "ads_add_extensions",
-    "Add sitelink and/or callout assets to a campaign. Dry run unless confirm=true",
+    "Add sitelink and/or callout assets to a campaign. Preview first; apply with confirm set to its Preview ID",
     {
       campaignId: Id,
       sitelinks: z

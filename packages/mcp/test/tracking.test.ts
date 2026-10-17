@@ -7,7 +7,7 @@ import { AccountStore } from "../src/core/context.js";
 import { defineTool } from "../src/core/tool.js";
 import { registerGtmTools } from "../src/gtm/tools.js";
 import { registerGa4AdminTools } from "../src/ga4/admin.js";
-import { fakeCustomer, fakeServer } from "./fakes.js";
+import { fakeCustomer, fakeServer, previewThenApply } from "./fakes.js";
 
 const credentials = { clientId: "id", clientSecret: "s", refreshToken: "r" };
 const store = new AccountStore({
@@ -35,9 +35,9 @@ describe("tracking tools", () => {
     const s = fakeServer();
     registerGtmTools(defineTool(s as any, store), { writes: true });
     registerGa4AdminTools(defineTool(s as any, store), { writes: true });
-    const r = await s.tools.gtm_publish.handler({ container: "GTM-TEST", confirm: true });
+    const r = await s.tools.gtm_publish.handler({ container: "GTM-TEST", confirm: "pv_00000000" });
     expect(r.content[0].text).toMatch(/^REFUSED/);
-    const g = await s.tools.ga4_set_key_event.handler({ eventName: "x", action: "create", confirm: true });
+    const g = await s.tools.ga4_set_key_event.handler({ eventName: "x", action: "create", confirm: "pv_00000000" });
     expect(g.content[0].text).toMatch(/^REFUSED/);
   });
 
@@ -53,7 +53,7 @@ describe("tracking tools", () => {
     const spy = vi.spyOn(google, "analyticsadmin").mockReturnValue({ properties: { keyEvents } } as any);
     const s = fakeServer();
     registerGa4AdminTools(defineTool(s as any, rw), { writes: true });
-    const r = await s.tools.ga4_set_key_event.handler({ eventName: "x", action: "create", confirm: true });
+    const r = await previewThenApply(s.tools.ga4_set_key_event.handler, { eventName: "x", action: "create" });
     spy.mockRestore();
     expect(r.content[0].text).toMatch(/^APPLIED but NOT LOGGED/);
   });

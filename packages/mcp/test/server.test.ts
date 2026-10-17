@@ -7,7 +7,7 @@ const credentials = { clientId: "id", clientSecret: "s", refreshToken: "r" };
 const storeWith = (writes: boolean) =>
   new AccountStore({ config: { accounts: { a: { customerId: "1", currency: "USD", timezone: "UTC", writes } } }, credentials, makeCustomer: () => fakeCustomer() });
 
-const NO_ACCOUNT = ["setup_doctor", "guide", "accounts_list", "use_account"];
+const NO_PROFILE = ["setup_doctor", "guide", "accounts_list", "use_profile"];
 
 describe("registerAll", () => {
   it("registers only read tools (incl. changes_list) when every profile is read-only", () => {
@@ -16,7 +16,7 @@ describe("registerAll", () => {
     expect(Object.keys(s.tools)).toHaveLength(37);
     expect(s.tools.changes_list).toBeDefined();
     expect(s.tools.ads_set_status).toBeUndefined();
-    expect(s.tools.ads_rollback).toBeUndefined();
+    expect(s.tools.rollback).toBeUndefined();
     expect(s.tools.gtm_publish).toBeUndefined();
     expect(s.tools.ga4_set_key_event).toBeUndefined();
   });
@@ -25,29 +25,37 @@ describe("registerAll", () => {
     const s = fakeServer();
     registerAll(s, storeWith(true));
     expect(Object.keys(s.tools)).toHaveLength(63);
-    expect(s.tools.ads_rollback).toBeDefined();
+    expect(s.tools.rollback).toBeDefined();
+    expect(s.tools.ads_rollback).toBeUndefined();
   });
 
-  it("account_profile returns the resolved profile without credentials", async () => {
+  it("get_profile returns the resolved profile without credentials", async () => {
     const s = fakeServer();
     registerAll(s, storeWith(false));
-    const out = JSON.parse((await s.tools.account_profile.handler({})).content[0].text);
+    const out = JSON.parse((await s.tools.get_profile.handler({})).content[0].text);
     expect(out).toMatchObject({ alias: "a", customerId: "1", currency: "USD", writes: false });
     expect(JSON.stringify(out)).not.toMatch(/refreshToken|clientSecret/);
   });
 
-  it("registers guide and the noAccount tools even with an empty config", () => {
+  it("registers guide and the profile-less tools even with an empty config", () => {
     const s = fakeServer();
     registerAll(s, new AccountStore({ config: { accounts: {} }, credentials }));
-    for (const n of NO_ACCOUNT) expect(s.tools[n], n).toBeDefined();
+    for (const n of NO_PROFILE) expect(s.tools[n], n).toBeDefined();
   });
 
-  it("gives every account-scoped tool the account parameter", () => {
+  it("gives every profile-scoped tool the profile parameter, and refuses the 0.3 account one", async () => {
     const s = fakeServer();
     registerAll(s, storeWith(true));
     for (const [name, t] of Object.entries(s.tools)) {
-      if (NO_ACCOUNT.includes(name)) expect(t.shape, name).not.toHaveProperty("account");
-      else expect(t.shape, name).toHaveProperty("account");
+      if (NO_PROFILE.includes(name)) {
+        expect(t.shape, name).not.toHaveProperty("profile");
+        continue;
+      }
+      expect(t.shape, name).toHaveProperty("profile");
+      expect((t.shape as any).account.safeParse("globex").success, name).toBe(false);
+      expect((t.shape as any).account.safeParse(undefined).success, name).toBe(true);
     }
+    // never falls back to the default profile when a 0.3 caller names another one
+    expect((await s.tools.get_profile.handler({ account: "b" })).content[0].text).toMatch(/^ERROR: "account" was renamed to "profile"/);
   });
 });

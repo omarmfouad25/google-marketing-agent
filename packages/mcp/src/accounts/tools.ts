@@ -35,8 +35,8 @@ export function registerAccountTools(tool: Tool, store: AccountStore, deps: () =
   );
 
   tool(
-    "use_account",
-    "Switch the default account for this session (not saved; edit \"default\" in accounts.json to persist)",
+    "use_profile",
+    "Switch the default profile for this session (not saved; edit \"default\" in accounts.json to persist)",
     { alias: z.string() },
     async ({ alias }) => {
       store.use(alias);

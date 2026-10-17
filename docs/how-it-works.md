@@ -19,8 +19,8 @@ flowchart LR
 | **AI app** | Understands your question, picks a skill, calls tools, writes the answer |
 | **Skills** | Step-by-step workflows (what to check, in which order, what good looks like, when to stop and ask you). They ship with the Claude Code plugin |
 | **MCP server** | The tools: reports, GAQL, changes, setup checks. Also serves the `guide` knowledge topics the skills rely on |
-| **Profiles** | One per account: IDs, currency, linked GA4/Search Console/Tag Manager, whether changes are allowed |
-| **Change log** | Every applied change with the values before it, so it can be undone |
+| **Profiles** | One per client: IDs, currency, linked GA4/Search Console/Tag Manager, whether changes are allowed (and only on what it lists) |
+| **Change log** | Every applied change with the values before it and how it was confirmed, so it can be rolled back |
 | **Google APIs** | Called directly with your OAuth client, at your Cloud project's access level |
 
 ## What happens when you ask for a change
@@ -33,23 +33,28 @@ sequenceDiagram
   participant Google
   You->>App: "Raise the Brand budget to 150"
   App->>Server: ads_update_budget (no confirm)
-  Server->>Server: account allows changes?
+  Server->>Server: profile allows changes?
   Server->>Google: read the current budget
   Server->>Server: within the budget limit?
   Server->>Google: validate only
   Google-->>Server: OK, nothing changed
-  Server-->>App: DRY RUN OK + preview
+  Server-->>App: PREVIEW + Preview ID
   App-->>You: Preview. Apply?
   You->>App: Yes
-  App->>Server: ads_update_budget (confirm)
-  Server->>Google: read the current values (for undo)
+  App->>Server: ads_update_budget (confirm: Preview ID)
+  Server->>Google: read the current budget again
+  Server->>Server: same change as the Preview?
+  Server->>You: Apply this change? (where the app supports it)
+  You-->>Server: Accept
+  Server->>Google: read the current values (for rollback)
   Server->>Google: apply
   Server->>Server: write the change log
-  Server-->>App: APPLIED (changeId)
+  Server-->>App: APPLIED (changeId, human-approved)
 ```
 
-If any check fails, nothing is sent to Google. If the current values can't be read, the change is refused, so an update
-is never applied without the values needed to undo it.
+If any check fails, nothing is sent to Google: no matching Preview, a budget that changed since it, a "no" from you. If
+the current values can't be read, the change is refused, so an update is never applied without the values needed to
+roll it back.
 
 ## Where your data lives
 

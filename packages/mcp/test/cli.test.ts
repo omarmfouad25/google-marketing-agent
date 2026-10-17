@@ -1,4 +1,4 @@
-import { afterEach, describe, it, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -13,6 +13,10 @@ const argsFile = (o: unknown) => {
   return f;
 };
 
+// never the real ~/.config: --apply writes the change log
+beforeEach(() => {
+  process.env.GOOGLE_MARKETING_AGENT_CONFIG = join(mkdtempSync(join(tmpdir(), "gma-")), "accounts.json");
+});
 afterEach(() => vi.restoreAllMocks());
 
 const credentials = { clientId: "i", clientSecret: "s", refreshToken: "r" };
@@ -51,6 +55,51 @@ describe("call", () => {
     expect(err).toHaveBeenCalledWith(expect.stringContaining("dateRange"));
     expect(customer.queries).toHaveLength(0);
     expect(log).not.toHaveBeenCalled();
+  });
+
+  describe("--apply", () => {
+    const writable = () => {
+      const customer = fakeCustomer();
+      const store = new AccountStore({ config: { accounts: { a: { customerId: "1", currency: "USD", timezone: "UTC", writes: true } } }, credentials, makeCustomer: () => customer });
+      return { customer, store };
+    };
+    const pause = { level: "campaign", ids: ["5"], status: "PAUSED" };
+    const applied = (customer: ReturnType<typeof fakeCustomer>) => customer.calls.filter((c) => !c.options?.validate_only);
+    const human = (supported: boolean, answer: "accept" | "decline") => ({ supported: () => supported, ask: vi.fn(async () => answer) });
+
+    it("only previews without --apply", async () => {
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+      const { customer, store } = writable();
+      expect(await call("ads_set_status", argsFile(pause), store)).toBe(0);
+      expect(log.mock.calls[0][0]).toMatch(/^PREVIEW \(nothing changed\)/);
+      expect(applied(customer)).toHaveLength(0);
+    });
+
+    it("asks in a terminal and applies on yes, as human-approved", async () => {
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+      const { customer, store } = writable();
+      const h = human(true, "accept");
+      expect(await call("ads_set_status", argsFile(pause), store, { apply: true, human: h })).toBe(0);
+      expect(h.ask).toHaveBeenCalledWith(expect.stringMatching(/^Apply this change to profile "a"\?/));
+      expect(log).toHaveBeenCalledTimes(1);
+      expect(log.mock.calls[0][0]).toMatch(/^APPLIED \(changeId: \w+, human-approved\)/);
+      expect(applied(customer)).toHaveLength(1);
+    });
+
+    it("applies nothing and exits 1 when the terminal user says no", async () => {
+      vi.spyOn(console, "log").mockImplementation(() => {});
+      const { customer, store } = writable();
+      expect(await call("ads_set_status", argsFile(pause), store, { apply: true, human: human(true, "decline") })).toBe(1);
+      expect(applied(customer)).toHaveLength(0);
+    });
+
+    it("prints the Preview then applies as preview-matched from a script", async () => {
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+      const { customer, store } = writable();
+      expect(await call("ads_set_status", argsFile(pause), store, { apply: true, human: human(false, "accept") })).toBe(0);
+      expect(log.mock.calls.map((c) => c[0].split("\n")[0])).toEqual(["PREVIEW (nothing changed). Google validated 1 operation(s).", expect.stringMatching(/^APPLIED \(changeId: \w+, preview-matched\)/)]);
+      expect(applied(customer)).toHaveLength(1);
+    });
   });
 
   it("the built entry runs when invoked via a path containing spaces", () => {

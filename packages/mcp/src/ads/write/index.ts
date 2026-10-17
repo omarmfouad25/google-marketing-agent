@@ -4,7 +4,6 @@ import { registerGoals } from "./goals.js";
 import { registerKeywords } from "./keywords.js";
 import { registerSearch } from "./search.js";
 import { registerDemandGen } from "./demand-gen.js";
-import { registerRollback } from "./rollback.js";
 
 export function registerAdsWriteTools(tool: Tool) {
   registerStatusBudgetBids(tool);
@@ -12,5 +11,4 @@ export function registerAdsWriteTools(tool: Tool) {
   registerKeywords(tool);
   registerSearch(tool);
   registerDemandGen(tool);
-  registerRollback(tool);
 }

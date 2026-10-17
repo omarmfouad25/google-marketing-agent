@@ -74,7 +74,7 @@ Plan → build → publish → verify. Each Tag Manager change is a workspace ed
 | "What changed in Tag Manager since version 12?" | `gtm_versions`: tags, triggers and variables added, removed and changed |
 | "Are we double counting?" · "Check consent mode" | `event-audit` · `consent-audit`: findings with evidence and a fix list |
 
-Full walkthrough, recipe reference, test matrix and undo: [tracking.md](tracking.md).
+Full walkthrough, recipe reference, test matrix and rollback: [tracking.md](tracking.md).
 
 ## Making changes safely
 
@@ -85,27 +85,29 @@ your AI app). Every change then goes through the same three steps.
 
 ```text
 You:    Add "free", "jobs" and "diy" as negatives on the Brand campaign.
-Agent:  DRY RUN OK (nothing changed)
+Agent:  PREVIEW (nothing changed). Google validated 3 operation(s).
         Add 3 negative keyword(s) to campaign 12345678901:
         - [PHRASE] free
         - [PHRASE] jobs
         - [PHRASE] diy
-        Google validated 3 operation(s). Apply?
+        Rollback: possible. Apply?
 ```
 
-**2. Apply on your yes.**
+**2. Apply on your yes.** The agent confirms the exact change it previewed. In Claude Code the server then asks you
+directly, so the yes is yours, not only the agent's.
 
 ```text
 You:    Yes.
-Agent:  APPLIED (changeId: 3f9c2a1b)
-        Revert with ads_rollback { changeId: "3f9c2a1b" }.
+        [Claude Code: Apply this change to profile "acme"? … Accept]
+Agent:  APPLIED (changeId: 3f9c2a1b, human-approved)
+        Roll back with rollback { changeId: "3f9c2a1b" }.
 ```
 
-**3. Undo if needed.**
+**3. Roll back if needed.**
 
 ```text
 You:    Undo that last change.
-Agent:  DRY RUN OK (nothing changed)
+Agent:  PREVIEW (nothing changed). Google validated 3 operation(s).
         Rollback of 3f9c2a1b (ads_add_negative_keywords: …): 3 operation(s). Apply?
 You:    Yes.
 ```
@@ -117,8 +119,10 @@ What to expect:
 - New campaigns and ads are always created **paused**. Going live is a separate change you confirm.
 - A budget change larger than 50% (or your profile's limit) is refused unless you explicitly ask to override it.
 - On a read-only account the agent tells you how to allow changes; it never works around it.
-- Undo restores the values from the time of the change, overwriting anything edited since. Tag Manager and GA4 changes
-  aren't undone automatically: re-publish an earlier Tag Manager version instead ([tracking.md](tracking.md#undo)).
+- Rollback restores the values from the time of the change. If anything was edited since, it shows the differences
+  and stops; you decide whether to overwrite them. It also rolls back Tag Manager publishes and GA4 key events
+  ([tracking.md](tracking.md#rollback)).
+- A preview is valid for 15 minutes and one use. If you come back later, the agent previews again.
 
 Full details: [safety.md](safety.md).
 
@@ -163,5 +167,6 @@ echo '{ "dateRange": "LAST_7_DAYS" }' > args.json
 npx google-marketing-agent call get_campaign_performance args.json
 ```
 
-Tool names and parameters: [tools.md](tools.md). Changes run from the terminal follow the same rules: they are
-previews unless the arguments include `"confirm": true`.
+Tool names and parameters: [tools.md](tools.md). Changes run from the terminal follow the same rules: `call` only
+previews, and `call <tool> <args.json> --apply` previews, asks you `Apply? [y/N]` and applies on your yes (from a script
+without a terminal, it prints the preview and applies it).

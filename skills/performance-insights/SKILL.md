@@ -22,7 +22,7 @@ for the Monday routine use `weekly-check`.
 
 ## Steps
 
-Call `account_profile` first (currency, linked GA4).
+Call `get_profile` first (currency, linked GA4).
 
 1. **Totals.** `get_account_summary` for each period. State the change in cost, clicks, CTR, CPC, conversions and
    cost per conversion as numbers and percentages.

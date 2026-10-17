@@ -17,12 +17,12 @@ we got leads", start with `tracking-audit` instead.
 
 ## Inputs
 
-- `account` with `gtmContainerId` and `ga4PropertyId` set (check with `account_profile`; the `setup` skill adds them).
+- `account` with `gtmContainerId` and `ga4PropertyId` set (check with `get_profile`; the `setup` skill adds them).
 - The tracking plan or target matrix if one exists (from `tracking-plan`): it defines what "should" fire.
 
 ## Steps
 
-Call `account_profile` first. Use `guide("gtm")` for the rules a container should follow and `guide("measurement")`
+Call `get_profile` first. Use `guide("gtm")` for the rules a container should follow and `guide("measurement")`
 for counting and freshness. Everything here is read-only.
 
 1. **Tag Manager.** `gtm_overview`, then `gtm_list` with `entity: "tags"`, `"triggers"` and `"variables"`,

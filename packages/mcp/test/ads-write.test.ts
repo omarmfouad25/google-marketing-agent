@@ -9,7 +9,7 @@ import { listChanges } from "../src/core/changelog.js";
 import { snapshotQueries } from "../src/core/snapshot.js";
 import { enums } from "google-ads-api";
 import { parseSendTo } from "../src/ads/write/goals.js";
-import { fakeCustomer, fakeServer } from "./fakes.js";
+import { fakeCustomer, fakeServer, previewId, previewThenApply } from "./fakes.js";
 
 const credentials = { clientId: "id", clientSecret: "s", refreshToken: "r" };
 let customer: ReturnType<typeof fakeCustomer>;
@@ -41,7 +41,7 @@ describe("ads write tools", () => {
       "ads_add_extensions", "ads_add_keywords", "ads_add_negative_keywords", "ads_assign_custom_goal",
       "ads_create_ad_group", "ads_create_conversion_action", "ads_create_custom_goal", "ads_create_demand_gen_ad", "ads_create_demand_gen_campaign",
       "ads_create_rsa", "ads_create_search_campaign", "ads_demand_gen_audience", "ads_negative_list",
-      "ads_rollback", "ads_set_campaign_goals", "ads_set_conversion_primary", "ads_set_status", "ads_update_budget",
+      "ads_set_campaign_goals", "ads_set_conversion_primary", "ads_set_status", "ads_update_budget",
       "ads_update_conversion_action", "ads_update_cpc_bid", "ads_update_networks",
     ]);
   });
@@ -86,7 +86,7 @@ describe("ads write tools", () => {
   it("refuses the custom segment call on a read-only profile", async () => {
     setup({ writes: false });
     const r = await server.tools.ads_demand_gen_audience.handler({
-      name: "A", adGroupIds: ["1"], customSegment: { keywords: ["x"] }, confirm: true,
+      name: "A", adGroupIds: ["1"], customSegment: { keywords: ["x"] }, confirm: "pv_00000000",
     });
     expect(r.content[0].text).toMatch(/^REFUSED/);
     expect(customer.calls).toHaveLength(0);
@@ -100,16 +100,32 @@ describe("ads write tools", () => {
 
   it("fails closed when the current budget is unknown", async () => {
     customer = fakeCustomer({ campaign: [budgetRow()] });
-    const r = await budget({ dailyBudget: 130, confirm: true });
+    const r = await budget({ dailyBudget: 130 });
     expect(r.content[0].text).toMatch(/current daily budget unknown; can't apply the ±50% guardrail/);
     expect(customer.calls).toHaveLength(0);
   });
 
   it("passes exactly at the limit, blocks just over, allowLargeChange bypasses", async () => {
     setup({ guardrails: { maxBudgetChangePct: 7 } });
-    expect((await budget({ dailyBudget: 107 })).content[0].text).toMatch(/^DRY RUN OK/);
+    expect((await budget({ dailyBudget: 107 })).content[0].text).toMatch(/^PREVIEW \(nothing changed\)/);
     expect((await budget({ dailyBudget: 107.01 })).content[0].text).toMatch(/^BLOCKED/);
-    expect((await budget({ dailyBudget: 300, allowLargeChange: true })).content[0].text).toMatch(/^DRY RUN OK/);
+    expect((await budget({ dailyBudget: 300, allowLargeChange: true })).content[0].text).toMatch(/^PREVIEW \(nothing changed\)/);
+  });
+
+  it("refuses the Confirmation when the budget changed after the Preview, and applies nothing", async () => {
+    const preview = await budget({ dailyBudget: 140 }); // 100 → 140, +40%: inside the guardrail
+    expect(preview.content[0].text).toContain("100 → 140 EUR (+40%)");
+    customer = fakeCustomer({ campaign: [budgetRow(80_000_000)] }); // someone set it to 80 in the UI: now +75%
+    const r = await budget({ dailyBudget: 140, allowLargeChange: true, confirm: previewId(preview) });
+    expect(r.content[0].text).toMatch(/^REFUSED \(nothing changed\): this change no longer matches preview/);
+    expect(customer.calls).toHaveLength(0);
+    expect(listChanges("acme")).toHaveLength(0);
+  });
+
+  it("refuses confirm without a Preview, before any mutation", async () => {
+    const r = await budget({ dailyBudget: 110, confirm: "pv_00000000" });
+    expect(r.content[0].text).toMatch(/^REFUSED \(nothing changed\): no valid preview/);
+    expect(customer.calls).toHaveLength(0);
   });
 
   it("creates Demand Gen campaigns, RSAs and Demand Gen ads PAUSED", async () => {
@@ -133,17 +149,26 @@ describe("ads write tools", () => {
     expect(ad.status).toBe(3);
   });
 
-  it("validates a custom segment on dry run and logs it on confirm", async () => {
-    const dry = await server.tools.ads_demand_gen_audience.handler({ name: "A", adGroupIds: ["1"], customSegment: { keywords: ["x"] } });
+  it("validates a custom segment in the Preview and creates it only after the Confirmation", async () => {
+    const args = { name: "A", adGroupIds: ["1"], customSegment: { keywords: ["x"] } };
+    const dry = await server.tools.ads_demand_gen_audience.handler(args);
     expect(customer.calls[0].options).toEqual({ validate_only: true });
-    expect(dry.content[0].text).toMatch(/^DRY RUN OK/);
-    expect(dry.content[0].text).toMatch(/validated/);
+    expect(dry.content[0].text).toMatch(/^PREVIEW \(nothing changed\)\. Google validated the custom segment/);
+    expect(dry.content[0].text).toMatch(/custom_audience resource\(s\) it creates stay in the account/);
     expect(customer.calls).toHaveLength(1);
 
-    await server.tools.ads_demand_gen_audience.handler({ name: "A", adGroupIds: ["1"], customSegment: { keywords: ["x"] }, confirm: true });
-    expect(customer.calls[1].options).toEqual({ validate_only: false });
+    // a Confirmation that doesn't match creates nothing, not even the segment
+    const wrong = await server.tools.ads_demand_gen_audience.handler({ ...args, adGroupIds: ["2"], confirm: previewId(dry) });
+    expect(wrong.content[0].text).toMatch(/^REFUSED \(nothing changed\)/);
+    expect(customer.calls).toHaveLength(1);
+
+    await previewThenApply(server.tools.ads_demand_gen_audience.handler, args);
+    const [, , segment, batch] = customer.calls;
+    expect(segment.options).toBeUndefined();
+    const audience = (batch.ops as any[]).find((o) => o.entity === "audience").resource;
+    expect(audience.dimensions[0].audience_segments.segments).toEqual([{ custom_audience: { custom_audience: "customers/1/customAudiences/77" } }]);
     const entry = listChanges("acme").find((e) => e.tool === "ads_demand_gen_audience" && e.summary.startsWith("Create custom segment"));
-    expect(entry?.created).toEqual([{ entity: "custom_audience", resource_name: "customers/1/customAudiences/77" }]);
+    expect(entry).toMatchObject({ confirmation: "preview-matched", created: [{ entity: "custom_audience", resource_name: "customers/1/customAudiences/77" }] });
   });
 
   it("refuses a read-only profile before any Google call while another profile is writable", async () => {
@@ -157,7 +182,7 @@ describe("ads write tools", () => {
     });
     server = fakeServer();
     registerAdsWriteTools(defineTool(server as any, store));
-    const r = await budget({ dailyBudget: 110, confirm: true, account: "ro" });
+    const r = await budget({ dailyBudget: 110, confirm: "pv_00000000", profile: "ro" });
     expect(r.content[0].text).toMatch(/^REFUSED/);
     expect(customer.calls).toHaveLength(0);
     expect(customer.queries).toHaveLength(0);
@@ -177,8 +202,8 @@ describe("ads write tools", () => {
 
   it("refuses campaign and Demand Gen ad creation on a read-only profile before any lookup", async () => {
     setup({ writes: false, geos: undefined });
-    const a = await server.tools.ads_create_search_campaign.handler({ name: "n", dailyBudget: 5, bidding: "MAXIMIZE_CLICKS", confirm: true });
-    const b = await server.tools.ads_create_demand_gen_ad.handler({ campaignId: "1", adGroupName: "g", landscapeImages: ["x"], squareImages: ["x"], logoImage: "x", headlines: ["h"], descriptions: ["d"], businessName: "b", finalUrl: "https://example.com", confirm: true });
+    const a = await server.tools.ads_create_search_campaign.handler({ name: "n", dailyBudget: 5, bidding: "MAXIMIZE_CLICKS", confirm: "pv_00000000" });
+    const b = await server.tools.ads_create_demand_gen_ad.handler({ campaignId: "1", adGroupName: "g", landscapeImages: ["x"], squareImages: ["x"], logoImage: "x", headlines: ["h"], descriptions: ["d"], businessName: "b", finalUrl: "https://example.com", confirm: "pv_00000000" });
     expect(a.content[0].text).toMatch(/^REFUSED/);
     expect(b.content[0].text).toMatch(/^REFUSED/);
     expect(customer.queries).toEqual([]);
@@ -198,7 +223,7 @@ describe("ads_create_conversion_action", () => {
 
   it("dry-runs a WEBPAGE lead action with one-per-click counting by default", async () => {
     const r = await server.tools.ads_create_conversion_action.handler({ name: "Consumer Lead – Form", category: "SUBMIT_LEAD_FORM" });
-    expect(r.content[0].text).toMatch(/^DRY RUN OK/);
+    expect(r.content[0].text).toMatch(/^PREVIEW \(nothing changed\)/);
     const op = (customer.calls[0].ops as any[])[0];
     expect(op).toMatchObject({ entity: "conversion_action", operation: "create" });
     expect(op.resource).toMatchObject({
@@ -227,7 +252,7 @@ describe("ads_create_conversion_action", () => {
 
   it("after applying, prints the conversion ID and label for gtm_build", async () => {
     customer.query = async (q: string) => (q.includes("tag_snippets") ? [{ conversion_action: { id: 5, tag_snippets: SNIPPET } }] : []);
-    const r = await server.tools.ads_create_conversion_action.handler({ name: "Consumer Lead – Form", category: "SUBMIT_LEAD_FORM", confirm: true });
+    const r = await previewThenApply(server.tools.ads_create_conversion_action.handler, { name: "Consumer Lead – Form", category: "SUBMIT_LEAD_FORM" });
     const out = r.content[0].text as string;
     expect(out).toMatch(/^APPLIED \(changeId: /);
     expect(out).toContain('gtm_build ads_conversion_tag: conversionId "123456789", conversionLabel "AbC-dEf_1"');

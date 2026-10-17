@@ -10,7 +10,7 @@ import { Confirm, Id, KeywordList, money, rn } from "./shared.js";
 export function registerKeywords(tool: Tool) {
   tool(
     "ads_add_keywords",
-    "Add keywords to an ad group. Dry run unless confirm=true",
+    "Add keywords to an ad group. Preview first; apply with confirm set to its Preview ID",
     {
       adGroupId: Id,
       keywords: KeywordList,
@@ -39,7 +39,7 @@ export function registerKeywords(tool: Tool) {
 
   tool(
     "ads_add_negative_keywords",
-    "Add campaign-level negative keywords. Dry run unless confirm=true",
+    "Add campaign-level negative keywords. Preview first; apply with confirm set to its Preview ID",
     { campaignId: Id, keywords: KeywordList, confirm: Confirm },
     async ({ campaignId, keywords, confirm }, ctx) =>
       runAdsWrite(ctx, {
@@ -61,7 +61,7 @@ export function registerKeywords(tool: Tool) {
   tool(
     "ads_negative_list",
     "Shared negative keyword list: create one (name) or add to an existing one (sharedSetId), and attach it to " +
-      "campaigns. Dry run unless confirm=true",
+      "campaigns. Preview first; apply with confirm set to its Preview ID",
     {
       name: z.string().min(1).optional().describe("Create a new list with this name"),
       sharedSetId: Id.optional().describe("Add to this existing list instead"),

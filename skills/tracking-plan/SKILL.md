@@ -16,12 +16,12 @@ the `gtm-build` skill can execute without guessing. Nothing is changed here: thi
 
 ## Inputs
 
-- `account` with `gtmContainerId` and `ga4PropertyId` set (check with `account_profile`; the `setup` skill adds them).
+- `account` with `gtmContainerId` and `ga4PropertyId` set (check with `get_profile`; the `setup` skill adds them).
 - The answers to the interview in step 1. Ask once, all together; don't drip questions across turns.
 
 ## Steps
 
-Call `account_profile` first (container, property, currency, writes). Use `guide("gtm")` for recipes and naming and
+Call `get_profile` first (container, property, currency, writes). Use `guide("gtm")` for recipes and naming and
 `guide("measurement")` for success signals, dedup and consent.
 
 1. **Interview (once).**

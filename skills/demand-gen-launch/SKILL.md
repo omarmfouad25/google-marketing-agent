@@ -28,7 +28,7 @@ a real audience signal, created **paused**, checked, launched, then read properl
 
 ## Steps
 
-Call `account_profile` first. Use `guide("demand-gen")` for specs and the first-week read and `guide("policy")` for
+Call `get_profile` first. Use `guide("demand-gen")` for specs and the first-week read and `guide("policy")` for
 image and wording rules.
 
 1. **Asset brief and image check.** Before building, check every image:
@@ -57,9 +57,9 @@ image and wording rules.
         seed list needs enough matched members to be eligible: check `user_list.size_for_display`;
       - a `customSegment` with buyer-intent search terms in every target language plus competitor or vendor websites.
 
-      Preview first, then apply. The custom segment is created in its own call before the audience batch, and the tool
-      can't create a segment on its own: any call with `customSegment` also builds and attaches an audience from the
-      segments it has. The dry run validates the segment but leaves it out of the batch preview. So send one call with
+      Preview first, then apply. Once confirmed, the custom segment is created in its own call before the audience
+      batch, and the tool can't create a segment on its own: any call with `customSegment` also builds and attaches an
+      audience from the segments it has. The preview validates the segment but leaves it out of the batch check. So send one call with
       `customSegment` + `userListIds` + the lookalike. The output line "Custom segment created: <resource>" holds the
       `customAudienceId` (last segment). If the batch then fails, retry with `customAudienceId`, never `customSegment`
       again (segment names must be unique).

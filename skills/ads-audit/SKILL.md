@@ -20,7 +20,7 @@ campaign before launch use the `pre-launch-check` skill; for "what changed last 
 
 ## Steps
 
-Call `account_profile` first (currency, linked GA4). Call `guide("gotchas")` once before writing GAQL. Money in raw
+Call `get_profile` first (currency, linked GA4). Call `guide("gotchas")` once before writing GAQL. Money in raw
 `run_gaql_query` output is already converted from micros.
 
 1. **Measurement (25 points).** `guide("measurement")`.
@@ -78,11 +78,11 @@ Score: NN/100
 ...
 
 ## Findings
-1. <finding> — <evidence with numbers> — money at stake: <currency amount/month>
+1. <finding> · <evidence with numbers> · money at stake: <currency amount/month>
 ...
 
 ## Fix list (highest impact first)
-1. <fix> — tool: `ads_add_negative_keywords` / `ads_update_networks` / ... — effort: low/medium/high
+1. <fix> · tool: `ads_add_negative_keywords` / `ads_update_networks` / ... · effort: low/medium/high
 ```
 
 Money uses the profile currency. Say which areas could not be checked (for example no GA4 linked) instead of guessing.

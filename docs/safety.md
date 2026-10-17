@@ -1,14 +1,15 @@
 # Safety model
 
-> **In short:** accounts are read-only until you allow changes; every change is a preview until you confirm it;
-> new campaigns start paused; every applied change is logged and can be undone.
+> **In short:** profiles are read-only until you allow changes, and only for the resources they list; every change is
+> a preview, and the server applies only a change that matches a preview it issued; where your AI app supports it, the
+> server asks you directly; new campaigns start paused; every applied change is logged and can be rolled back.
 
 An AI agent with write access to an ad account can spend real money. This package is built so that it can only
-change what you approve, and so that anything it changed can be undone.
+change what you approve, and so that anything it changed can be rolled back.
 
 ## The four layers
 
-### 1. Writes are off per account
+### 1. Writes are off per profile, and bounded by it
 
 Every profile starts with `"writes": false`. Write tools load only when at least one profile has `"writes": true`.
 A write against a read-only profile is refused before anything reaches Google:
@@ -25,23 +26,60 @@ npx google-marketing-agent accounts set acme writes true
 
 Agencies can enable writes for the clients they manage day to day and keep the rest read-only.
 
-### 2. Preview first, apply on confirm
+A profile with writes on can only change **what it lists**: its Google Ads account, GA4 property, and the Tag Manager
+containers in `gtmContainerId` and `gtmContainerIds`. A Tag Manager write to any other container is refused, even
+though your login can see it. Reads still reach everything your login can see
+([ADR 0002](adr/0002-writes-bounded-by-profile-scope.md)).
+
+### 2. Preview first, apply only what was previewed
 
 Every write tool runs twice:
 
-1. **Without `confirm`:** the change is sent to Google with `validate_only`. Google checks it in full (permissions,
-   policy, field rules), and nothing changes. You get a preview:
+1. **Without `confirm`** you get a **Preview**: exactly what will change, and nothing changes. For Google Ads the
+   change is sent with `validate_only`, so Google checks it in full (permissions, policy, field rules). Every Preview
+   also says whether the change can be rolled back, and gets a **Preview ID**:
 
    ```
-   DRY RUN OK (nothing changed)
+   PREVIEW (nothing changed). Google validated 1 operation(s).
+
    Set 1 campaign(s) → ENABLED: 12345678901
-   Google validated 1 operation(s). Call again with confirm: true to apply.
+
+   Rollback: possible with rollback.
+
+   Preview ID: pv_3f9c2a1b (valid 15 minutes, once). To apply, show this preview to the user, then call
+   ads_set_status again with the same arguments and confirm: "pv_3f9c2a1b".
    ```
 
-2. **With `confirm: true`:** the same change is applied.
+2. **With `confirm: "<Preview ID>"`** the server rebuilds the Preview and applies the change only if it matches the
+   one it issued. It refuses (nothing changed) when:
+   - there was no Preview, or it expired (15 minutes), was already used, or was lost when the server restarted;
+   - the Preview was for another tool or profile;
+   - anything the Preview depended on changed: different arguments, or the account moved on meanwhile. For example a
+     budget raise previewed as +40% is refused if someone lowered the budget in the UI, because it would now be +75%.
+     A Tag Manager publish is refused if a colleague added a change to the workspace after the Preview.
 
-The skills always show you the preview and wait for your yes before calling with `confirm: true`. If you use the
-tools directly from another agent, keep the same habit.
+   The Preview ID is used up by one Confirmation or one refusal. This makes "preview first" a rule the server
+   enforces, not a habit the agent is asked to keep ([ADR 0001](adr/0001-confirmations-bound-to-previews.md)).
+
+### 2b. You approve, not just the agent
+
+When your AI app supports MCP elicitation (Claude Code does), the server asks **you** directly before applying, showing
+the Preview again. The agent can't answer that prompt for you. Decline or close it and nothing changes; the agent is
+told not to retry unless you ask again.
+
+Apps without elicitation (and scripts) get the Preview check alone. The change log records which kind each change got:
+
+| Recorded as | Means |
+|---|---|
+| `human-approved` | You answered the server's prompt |
+| `preview-matched` | The agent confirmed a matching Preview; nobody answered the server directly |
+
+To require the first kind for a client, set `"requireHumanApproval": true` on its profile. Apps that can't ask then
+can't change that client at all, and the Preview says so up front.
+
+From the terminal, `npx google-marketing-agent call <tool> <args.json> --apply` previews and confirms in one run: it
+shows the Preview and asks you `Apply? [y/N]` (human-approved), or, without a terminal (a script or cron job), prints
+the Preview and applies it (preview-matched). Without `--apply`, `call` only previews.
 
 ### 3. Guardrails
 
@@ -57,19 +95,27 @@ tools directly from another agent, keep the same habit.
 Every applied write is appended to:
 
 ```
-~/.config/google-marketing-agent/changes/<account>.jsonl
+~/.config/google-marketing-agent/changes/<profile>.jsonl
 ```
 
-Each entry records the time, tool, summary, the operations sent, the resources created or changed, and **the prior
-state** of what was changed.
+Each entry records the time, tool, summary, how it was confirmed, the operations sent, the resources created or
+changed, and **the prior state** of what was changed.
 
-- `changes_list` shows recent entries for an account.
-- `ads_rollback` reverts one entry by restoring its prior state (status, budget, bid, network settings). It uses the
-  same preview → confirm flow.
-- Things that were **created** are removed (Google keeps their history). Image assets and Demand Gen custom segments are listed as not reverted: assets are unused once their ad is removed, and segments can be removed in the UI or reused.
-- Rollback restores the logged values, so it overwrites any edits made after that change. It refuses Tag Manager and GA4 entries, entries whose prior-state snapshot failed, entries already rolled back, and rollbacks of a rollback.
-- Writes fail closed: if the prior-state snapshot can't be taken, or the current budget is unknown for the budget guardrail, the change is refused rather than applied unlogged.
-- The `container` parameter of `gtm_upsert`, `gtm_build`, `gtm_delete`, `gtm_builtin_variables` and `gtm_publish` can target any Tag Manager container the login can see, not only the one in the profile.
+- `changes_list` shows recent entries for a profile.
+- `rollback` rolls one entry back, in any product, with the same Preview → Confirmation flow:
+  - **Google Ads:** restores the prior state (status, budget, bid, network settings) and removes what the change
+    created (Google keeps their history). Image assets and Demand Gen custom segments stay: assets are unused once their
+    ad is removed, and segments can be removed in the UI or reused.
+  - **Tag Manager publishes:** re-publishes the version that was live before.
+  - **GA4:** unmarks or re-marks a key event; a created custom dimension is archived (permanent).
+- **Drift is refused.** If the account moved on since the change (a teammate edited the same budget, a newer Tag
+  Manager version went live, a campaign the change created paused was enabled by hand), `rollback` lists the
+  differences and refuses. Pass `acceptDrift: true` to overwrite them deliberately
+  ([ADR 0003](adr/0003-rollback-refuses-drift.md)).
+- It refuses Tag Manager workspace edits (see below), entries whose prior-state snapshot failed, entries already rolled
+  back, and rollbacks of a rollback.
+- Writes fail closed: if the prior-state snapshot can't be taken, or the current budget is unknown for the budget
+  guardrail, the change is refused rather than applied unlogged.
 
 ## Tag Manager and GA4 writes
 
@@ -84,20 +130,21 @@ The same rules apply (writes on per account, preview first, logged), with these 
 | Verify | `gtm_live_check` reads what visitors actually receive, after publishing |
 | GA4 custom dimensions | Created dimensions apply only to data from then on. Archiving is permanent |
 
-Undo:
+Rollback:
 
-- **Before publishing:** Tag Manager → Workspace Changes → Revert, or `gtm_delete` what was just created.
-- **After publishing:** re-publish the previous version with `gtm_publish` and `versionId` (the publish result names
-  it; `gtm_versions` lists all versions).
-- **GA4:** `ga4_set_key_event` with `action: "remove"`; archived custom dimensions can't be restored.
-- **Google Ads conversion actions** created with `ads_create_conversion_action` are removed by `ads_rollback`.
+- **Before publishing:** workspace edits are invisible to visitors, so `rollback` leaves them to Tag Manager →
+  Workspace Changes → Revert, or `gtm_delete` what was just created.
+- **After publishing:** `rollback` with the publish's change ID re-publishes the previous version.
+- **GA4:** `rollback` unmarks or re-marks a key event. Archived custom dimensions can't be restored.
+- **Google Ads conversion actions** created with `ads_create_conversion_action` are removed by `rollback`.
 
-Details: [tracking.md](tracking.md#undo).
+Details: [tracking.md](tracking.md#rollback).
 
 ## What the agent can never do
 
-- Change anything on a read-only profile.
-- Apply a change without `confirm: true`.
+- Change anything on a read-only profile, or outside the resources a profile lists.
+- Apply a change that doesn't match a Preview the server issued in the last 15 minutes.
+- Answer the approval prompt for you, where your app shows one.
 - Create a campaign or ad that serves immediately.
 - Read or print your OAuth credentials. They live in `credentials.json` (mode `0600`) and never pass through tool
   output.

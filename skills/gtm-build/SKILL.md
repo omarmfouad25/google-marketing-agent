@@ -17,7 +17,7 @@ creates don't depend on hand-written JSON.
 
 ## Inputs
 
-- `account` with `gtmContainerId` and `ga4PropertyId` set (check with `account_profile`; the `setup` skill adds them).
+- `account` with `gtmContainerId` and `ga4PropertyId` set (check with `get_profile`; the `setup` skill adds them).
 - The plan: events, data-layer keys, audience split (path regex), GA4 measurement ID (for example `G-TEST123`),
   which Ads actions exist and which to create, consent per tag.
 - Site work done: the data-layer pushes from the plan's contract are live (or ship in the same release). Link
@@ -25,9 +25,10 @@ creates don't depend on hand-written JSON.
 
 ## Steps
 
-Call `account_profile` first. Read `guide("gtm")` (recipes, rules, publish checklist) and `guide("measurement")`
+Call `get_profile` first. Read `guide("gtm")` (recipes, rules, publish checklist) and `guide("measurement")`
 (success signal, live tests). Every write below is a preview first and applied only after a yes; with the user's
-agreement you may preview a whole group (say, all variables), then apply them one by one. Record each returned ID:
+agreement you may preview a whole group (say, all variables), then apply them one by one. Each preview has its own
+Preview ID, works once and expires after 15 minutes: preview again if the user takes longer. Record each returned ID:
 later steps need them.
 
 0. **Baseline.** `gtm_overview`: if the workspace already has unpublished changes nobody can explain, stop and ask;
@@ -75,7 +76,8 @@ later steps need them.
 9. **Review.** `gtm_versions` with `versionId: "workspace"`, shown to the user **in full**: added, removed and
    changed tags, triggers and variables against live. Anything unintended gets fixed before publishing.
 10. **Publish.** On a yes, `gtm_publish` with a dated `name` (`2026-10-15 lead tracking`) and `notes` listing what
-    changed. Tell the user the rollback: `gtm_publish` with `versionId` = the live version noted in step 0.
+    changed. Tell the user the rollback: `rollback` with the publish's change ID re-publishes the version noted in step 0,
+    and refuses if a newer version went live since.
 11. **Live check.** `gtm_live_check` right after publish: every conversion label, GA4 event name and measurement ID
     must be in the served `gtm.js`. Google's CDN can lag a few minutes; re-run before calling anything missing.
 12. **Key events.** Once each event has fired at least once, `ga4_set_key_event` with `eventName`, `action: "create"`.

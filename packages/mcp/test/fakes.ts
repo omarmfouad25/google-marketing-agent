@@ -116,3 +116,18 @@ export function fakeGtm(init: Partial<GtmState> = {}) {
   };
   return { api, state, calls };
 }
+
+type Result = { content: { text: string }[] };
+
+/** The Preview ID a Preview returned; throws with the text when there is none */
+export function previewId(r: Result): string {
+  const m = /Preview ID: (pv_[0-9a-f]{8})/.exec(r.content[0].text);
+  if (!m) throw new Error(`No Preview ID in: ${r.content[0].text}`);
+  return m[1];
+}
+
+/** The two-step flow every write takes: Preview, then Confirmation with the same arguments and its ID */
+export async function previewThenApply(handler: (a: any) => Promise<any>, args: Record<string, unknown>) {
+  const preview = await handler(args);
+  return handler({ ...args, confirm: previewId(preview) });
+}

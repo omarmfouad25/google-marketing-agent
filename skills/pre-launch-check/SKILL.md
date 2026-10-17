@@ -20,7 +20,7 @@ A campaign exists (usually PAUSED, as every campaign created by this package is)
 
 ## Steps
 
-Call `account_profile` (currency, writes). Then run each check with `run_gaql_query` unless another tool is named.
+Call `get_profile` (currency, writes). Then run each check with `run_gaql_query` unless another tool is named.
 
 1. **Goal.** `SELECT campaign_conversion_goal.category, campaign_conversion_goal.origin, campaign_conversion_goal.biddable FROM campaign_conversion_goal WHERE campaign.id = <id>`
    and `SELECT conversion_goal_campaign_config.goal_config_level, conversion_goal_campaign_config.custom_conversion_goal FROM conversion_goal_campaign_config WHERE campaign.id = <id>`.

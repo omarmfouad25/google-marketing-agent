@@ -4,8 +4,11 @@ Thanks for helping. Issues, fixes, new tools and new skills are all welcome.
 
 ## Ground rules
 
-- **Safety model first.** New write tools must use the shared preview → confirm runner, respect `writes` per
-  profile, log to the change log with the prior state, and create anything new as PAUSED.
+- **Safety model first** ([ADRs](docs/adr/)). New write tools go through the Preview → Confirmation gate
+  (`runAdsWrite` for Google Ads, `gated` for the rest), respect `writes` and the profile's scope, say in the Preview
+  whether the change can be rolled back, log to the change log with the prior state, and create anything new as PAUSED.
+- **Use the glossary.** Terms in [CONTEXT.md](CONTEXT.md) (Profile, Preview, Confirmation, Rollback, Drift) are the
+  words for code, docs and tool output.
 - **Nothing account-specific.** No IDs, currencies, locations or brands in code; they come from the profile.
 - **Knowledge goes in `packages/mcp/knowledge/`**, not copied into skills. Skills call `guide(<topic>)`.
 - **No secrets** in code, tests, fixtures, issues or PRs.
@@ -22,7 +25,7 @@ npm run test:live   # optional: every write tool as validate_only against your o
 ## Adding a write tool
 
 1. Write a pure `build<Thing>Ops(args, profile)` that returns the mutate operations.
-2. Register the tool with the shared runner (preview unless `confirm: true`).
+2. Register the tool with the shared runner: it previews without `confirm` and applies only with a matching Preview ID.
 3. Add unit tests for the operations (status, money in micros, guardrails).
 4. Add it to `docs/tools.md`.
 

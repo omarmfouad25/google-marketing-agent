@@ -28,7 +28,7 @@ describe("AccountStore", () => {
   });
 
   it("names known aliases for an unknown one", () => {
-    expect(() => store().context("acm")).toThrow(/Unknown account "acm".*acme, globex/);
+    expect(() => store().context("acm")).toThrow(/Unknown profile "acm".*acme, globex/);
   });
 
   it("points to init when no profiles exist", () => {
@@ -38,24 +38,24 @@ describe("AccountStore", () => {
 
   it("treats an empty alias as unset and rejects inherited keys", () => {
     expect(store().context("").alias).toBe("acme");
-    expect(() => store().context("constructor")).toThrow(/Unknown account "constructor".*acme, globex/);
+    expect(() => store().context("constructor")).toThrow(/Unknown profile "constructor".*acme, globex/);
   });
 });
 
 describe("defineTool", () => {
-  it("adds an account param and passes the resolved ctx", async () => {
+  it("adds a profile param and passes the resolved ctx", async () => {
     const server = fakeServer();
     defineTool(server as any, store())("echo", "d", { n: z.number() }, async (a, ctx) => text(`${a.n}:${ctx.alias}`));
-    expect(Object.keys(server.tools.echo.shape)).toEqual(["n", "account"]);
-    const r = await server.tools.echo.handler({ n: 1, account: "globex" });
+    expect(Object.keys(server.tools.echo.shape)).toEqual(["n", "profile", "account"]);
+    const r = await server.tools.echo.handler({ n: 1, profile: "globex" });
     expect(r.content[0].text).toBe("1:globex");
   });
 
   it("returns readable text instead of throwing", async () => {
     const server = fakeServer();
     defineTool(server as any, store())("bad", "d", {}, async () => text("never"));
-    const r = await server.tools.bad.handler({ account: "nope" });
-    expect(r.content[0].text).toMatch(/Unknown account "nope"/);
+    const r = await server.tools.bad.handler({ profile: "nope" });
+    expect(r.content[0].text).toMatch(/Unknown profile "nope"/);
   });
 
   it("noAccount tools run with zero profiles; normal tools get the init message", async () => {
@@ -66,7 +66,7 @@ describe("defineTool", () => {
     tool("needs", "d", {}, async () => text("never"));
     expect(Object.keys(server.tools.free.shape)).toEqual([]);
     expect((await server.tools.free.handler({})).content[0].text).toBe("ok");
-    expect((await server.tools.needs.handler({})).content[0].text).toMatch(/No accounts configured.*npx google-marketing-agent init/);
+    expect((await server.tools.needs.handler({})).content[0].text).toMatch(/No profiles configured.*npx google-marketing-agent init/);
   });
 
   it("formats non-Error throws as readable text", async () => {
